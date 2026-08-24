@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>异步编程 · 执行顺序实验室</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f0f4fe;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
+
+        .card {
+            max-width: 780px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 32px;
+            padding: 32px 36px 40px;
+            box-shadow: 0 20px 60px rgba(0, 20, 40, 0.10);
+        }
+
+        h1 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 26px;
+            font-weight: 700;
+            color: #0b1a33;
+            margin-bottom: 6px;
+        }
+
+        h1 small {
+            font-size: 14px;
+            font-weight: 500;
+            color: #5a6e8e;
+            background: #eef3fc;
+            padding: 2px 16px;
+            border-radius: 30px;
+        }
+
+        .sub {
+            color: #4f6484;
+            font-size: 15px;
+            margin-bottom: 24px;
+            border-left: 4px solid #7c5cfc;
+            padding-left: 16px;
+        }
+
+        .code-box {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 20px 24px;
+            color: #e2e8f0;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            overflow-x: auto;
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .code-box .comment {
+            color: #94a3b8;
+        }
+
+        .code-box .sync {
+            color: #a78bfa;
+        }
+
+        .code-box .macro {
+            color: #60a5fa;
+        }
+
+        .code-box .micro {
+            color: #34d399;
+        }
+
+        .code-box .keyword {
+            color: #f472b6;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 28px;
+        }
+
+        .controls button {
+            background: #f1f5f9;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 14px;
+            color: #1d2b44;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 2px solid transparent;
+        }
+
+        .controls button:hover {
+            background: #e2e8f0;
+            transform: translateY(-2px);
+        }
+
+        .controls button.primary {
+            background: #7c5cfc;
+            color: #fff;
+            border-color: #7c5cfc;
+        }
+
+        .controls button.primary:hover {
+            background: #6a46f0;
+        }
+
+        .controls button.outline {
+            border-color: #cbd5e1;
+        }
+
+        .log-container {
+            background: #f8fafc;
+            border-radius: 16px;
+            border: 2px solid #e9edf4;
+            padding: 16px 20px;
+            min-height: 220px;
+            max-height: 340px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+        }
+
+        .log-item {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            padding: 6px 0;
+            border-bottom: 1px solid #f0f4fe;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .log-item:last-child {
+            border-bottom: none;
+        }
+
+        .log-badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 0 10px;
+            border-radius: 30px;
+            line-height: 22px;
+            color: #fff;
+            flex-shrink: 0;
+            min-width: 52px;
+            text-align: center;
+        }
+
+        .log-badge.sync {
+            background: #7c5cfc;
+        }
+
+        .log-badge.macro {
+            background: #3b82f6;
+        }
+
+        .log-badge.micro {
+            background: #10b981;
+        }
+
+        .log-msg {
+            color: #0b1a33;
+            word-break: break-all;
+        }
+
+        .log-msg .highlight-sync {
+            color: #7c5cfc;
+            font-weight: 600;
+        }
+
+        .log-msg .highlight-macro {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .log-msg .highlight-micro {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .empty-log {
+            color: #94a3b8;
+            text-align: center;
+            padding: 32px 0;
+            font-style: italic;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .legend-tip {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            font-size: 13px;
+            color: #475569;
+        }
+
+        .legend-tip span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-tip .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 4px;
+        }
+
+        .dot.sync {
+            background: #7c5cfc;
+        }
+
+        .dot.macro {
+            background: #3b82f6;
+        }
+
+        .dot.micro {
+            background: #10b981;
+        }
+
+        .footer-note {
+            margin-top: 20px;
+            background: #f4f7fe;
+            border-radius: 14px;
+            padding: 14px 20px;
+            font-size: 14px;
+            color: #1d3b66;
+            border-left: 5px solid #7c5cfc;
+            line-height: 1.6;
+        }
+
+        .footer-note strong {
+            color: #0b1a33;
+        }
+
+        @media (max-width: 600px) {
+            .card {
+                padding: 20px 16px;
+            }
+
+            h1 {
+                font-size: 20px;
+                flex-wrap: wrap;
+            }
+
+            .code-box {
+                font-size: 12px;
+                padding: 16px;
+            }
+
+            .controls button {
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+
+            .log-container {
+                font-size: 12px;
+                padding: 12px;
+                max-height: 260px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>
+            ⚡ 异步编程执行顺序
+            <small>宏任务 vs 微任务</small>
+        </h1>
+        <div class="sub">
+            🔍 点击「运行测试」观察 <strong>同步代码 → 微任务(Promise) → 宏任务(setTimeout)</strong> 的固定执行顺序
+        </div>
+
+        <!-- 待执行代码展示 -->
+        <div class="code-box">
+            <div><span class="comment">// 经典面试题：输出顺序是什么？</span></div>
+            <div><span class="sync">console</span>.<span class="sync">log</span>(<span style="color:#fbbf24;">'① 同步
+                    start'</span>);</div>
+            <div><br /></div>
+            <div><span class="macro">setTimeout</span>(() => {</div>
+            <div>&nbsp;&nbsp;<span class="sync">console</span>.<span class="sync">log</span>(<span
+                    style="color:#fbbf24;">'④ 宏任务 [setTimeout]'</span>);</div>
+            <div>}, <span style="color:#fbbf24;">0</span>);</div>
+            <div><br /></div>
+            <div><span class="micro">Promise</span>.<span class="micro">resolve</span>().<span
+                    class="micro">then</span>(() => {</div>
+            <div>&nbsp;&nbsp;<span class="sync">console</span>.<span class="sync">log</span>(<span
+                    style="color:#fbbf24;">'③ 微任务 [Promise.then]'</span>);</div>
+            <div>});</div>
+            <div><br /></div>
+            <div><span class="sync">console</span>.<span class="sync">log</span>(<span style="color:#fbbf24;">'② 同步
+                    end'</span>);</div>
+        </div>
+
+        <!-- 控制按钮 -->
+        <div class="controls">
+            <button class="primary" id="runBtn">▶ 运行测试</button>
+            <button class="outline" id="clearBtn">🗑 清空日志</button>
+            <button class="outline" id="presetBtn">📋 加载面试题</button>
+        </div>
+
+        <!-- 日志输出区 -->
+        <div class="log-container" id="logContainer">
+            <div class="empty-log">⏳ 点击「运行测试」查看异步执行顺序</div>
+        </div>
+
+        <!-- 图例 & 说明 -->
+        <div class="legend-tip">
+            <span><span class="dot sync"></span> 同步任务 (立即执行)</span>
+            <span><span class="dot micro"></span> 微任务 (Promise/async)</span>
+            <span><span class="dot macro"></span> 宏任务 (setTimeout/I/O)</span>
+            <span>⏱ 执行顺序：同步 > 微任务 > 宏任务</span>
+        </div>
+
+        <div class="footer-note">
+            <strong>🎯 校招核心结论：</strong>
+            即使 <code>setTimeout</code> 延时为 0，它也会被放入宏任务队列，<strong>必须等当前脚本中的所有同步代码和微任务队列清空后</strong>才会执行。
+            所以输出顺序永远是 <strong>① → ② → ③ → ④</strong>。
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const logContainer = document.getElementById('logContainer');
+            const runBtn = document.getElementById('runBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const presetBtn = document.getElementById('presetBtn');
+
+            // ---------- 日志渲染 ----------
+            function addLog(type, message, detail = '') {
+                // 移除空状态
+                const empty = logContainer.querySelector('.empty-log');
+                if (empty) empty.remove();
+
+                const item = document.createElement('div');
+                item.className = 'log-item';
+
+                const badge = document.createElement('span');
+                badge.className = `log-badge ${type}`;
+                const labelMap = { sync: '同步', macro: '宏任务', micro: '微任务' };
+                badge.textContent = labelMap[type] || type;
+                item.appendChild(badge);
+
+                const msgSpan = document.createElement('span');
+                msgSpan.className = 'log-msg';
+                // 简单高亮关键词
+                let html = message;
+                html = html.replace(/(同步|宏任务|微任务)/g, (match) => {
+                    const cls = { '同步': 'highlight-sync', '宏任务': 'highlight-macro', '微任务': 'highlight-micro' }[
+                        match
+                    ];
+                    return `<span class="${cls}">${match}</span>`;
+                });
+                msgSpan.innerHTML = html;
+                if (detail) {
+                    const detailSpan = document.createElement('span');
+                    detailSpan.style.cssText =
+                        'color:#64748b;font-size:12px;margin-left:8px;background:#eef2f6;padding:0 10px;border-radius:12px;';
+                    detailSpan.textContent = detail;
+                    msgSpan.appendChild(detailSpan);
+                }
+                item.appendChild(msgSpan);
+                logContainer.appendChild(item);
+                // 自动滚动到底部
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+
+            function clearLog() {
+                logContainer.innerHTML = `<div class="empty-log">⏳ 日志已清空，点击「运行测试」开始</div>`;
+            }
+
+            // ---------- 核心测试函数 ----------
+            function runAsyncTest() {
+                clearLog();
+
+                // 为了演示更清晰，添加延迟微秒，但执行顺序由事件循环保证
+                // 同步任务 1
+                addLog('sync', '① 执行 <strong>同步</strong> 代码: console.log("start")', '调用栈');
+
+                // 宏任务 (setTimeout)
+                setTimeout(() => {
+                    addLog('macro', '④ 执行 <strong>宏任务</strong>: setTimeout 回调', '任务队列');
+                }, 0);
+
+                // 微任务 (Promise)
+                Promise.resolve().then(() => {
+                    addLog('micro', '③ 执行 <strong>微任务</strong>: Promise.then 回调', '微任务队列');
+                });
+
+                // 同步任务 2
+                addLog('sync', '② 执行 <strong>同步</strong> 代码: console.log("end")', '调用栈');
+
+                // 额外提示：在宏任务执行后追加一个微任务，展示嵌套情况（可选）
+                // 但为了保持经典面试题简洁，不添加额外干扰，但用 setTimeout 内部再放微任务会更有趣？
+                // 我们保持纯经典，但在底部加一个说明。
+                // 追加一个小彩蛋：在宏任务执行后，再派发一个微任务，展示“宏任务内部可产生微任务”
+                // 但为了不混淆核心顺序，我放在一个延时后补充说明，但为了严谨，我们直接在宏任务里加一个微任务演示，但为了保持输出清晰，我用一个额外的 setTimeout 做演示
+                // 但更干净：直接保持经典 4 步。
+            }
+
+            // ---------- 预设面试题 (带嵌套) ----------
+            function runAdvancedTest() {
+                clearLog();
+                addLog('sync', '⏳ 开始执行进阶异步代码...', '');
+
+                // 同步
+                addLog('sync', '① 同步代码: 开始', '调用栈');
+
+                setTimeout(() => {
+                    addLog('macro', '④ 宏任务 A: setTimeout 0', '任务队列');
+                    // 宏任务内部产生微任务
+                    Promise.resolve().then(() => {
+                        addLog('micro', '⑤ 微任务 (宏任务A 内部产生)', '微任务队列');
+                    });
+                }, 0);
+
+                Promise.resolve().then(() => {
+                    addLog('micro', '③ 微任务 B: Promise.then', '微任务队列');
+                });
+
+                setTimeout(() => {
+                    addLog('macro', '⑥ 宏任务 B: 第二个 setTimeout', '任务队列');
+                }, 0);
+
+                addLog('sync', '② 同步代码: 结束', '调用栈');
+
+                // 补充说明：
+                setTimeout(() => {
+                    addLog('sync', '💡 注意: 宏任务 A 执行后，会先清空其产生的微任务 (⑤)，再执行下一个宏任务 (⑥)', '关键点');
+                }, 50);
+            }
+
+            // ---------- 绑定事件 ----------
+            runBtn.addEventListener('click', runAsyncTest);
+
+            clearBtn.addEventListener('click', clearLog);
+
+            presetBtn.addEventListener('click', runAdvancedTest);
+
+            // 初始默认运行一次，让用户看到效果
+            window.addEventListener('load', () => {
+                // 延迟一点点让页面渲染完
+                setTimeout(runAsyncTest, 300);
+            });
+
+            // 键盘快捷键
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    e.preventDefault();
+                    runAsyncTest();
+                }
+                if (e.key === 'c' && e.ctrlKey) {
+                    // 不拦截默认复制
+                }
+                if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
+                    // 按 r 键重置
+                    clearLog();
+                }
+            });
+
+            console.log('🔥 异步编程实验室已启动！ 按 Ctrl+Enter 快速运行测试。');
+        })();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript 原型与原型链 · 优化箭头关系</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #f7f9fc;
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #app {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+            padding: 30px 30px 40px;
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: 300;
+            font-size: 28px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        h1 strong {
+            font-weight: 600;
+            color: #2980b9;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .canvas-wrapper {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e9edf2;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            cursor: pointer;
+            background: white;
+            border-radius: 12px;
+        }
+
+        #info {
+            margin-top: 25px;
+            padding: 18px 24px;
+            background: #f0f4f9;
+            border-radius: 12px;
+            border-left: 6px solid #2980b9;
+            min-height: 90px;
+            transition: all 0.2s;
+        }
+
+        #info h3 {
+            font-weight: 500;
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        #detail {
+            font-size: 15px;
+            line-height: 1.7;
+            color: #1e2b37;
+            margin: 0;
+            word-break: break-word;
+        }
+
+        #detail .highlight {
+            color: #c0392b;
+            font-weight: 600;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            justify-content: center;
+            margin-top: 20px;
+            padding: 12px 0 0;
+            border-top: 1px solid #e9edf2;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-line {
+            display: inline-block;
+            width: 28px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .legend-line.arrow {
+            position: relative;
+        }
+
+        .legend-line.arrow::after {
+            content: '▶';
+            position: absolute;
+            right: -14px;
+            top: -8px;
+            font-size: 12px;
+        }
+
+        .legend-line.proto {
+            background: #e74c3c;
+        }
+
+        .legend-line.prototype {
+            background: #3498db;
+        }
+
+        .legend-line.constructor {
+            background: #2ecc71;
+            height: 2px;
+            border-top: 2px dashed #2ecc71;
+            background: transparent;
+        }
+
+        .legend-line.null {
+            background: #95a5a6;
+        }
+
+        .tip {
+            text-align: center;
+            font-size: 13px;
+            color: #95a5a6;
+            margin-top: 8px;
+        }
+
+        .btn-reset {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 4px 16px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .btn-reset:hover {
+            background: #2980b9;
+        }
+
+        @media (max-width: 700px) {
+            #app {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .legend {
+                gap: 12px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <h1>🔗 JavaScript <strong>原型</strong> 与 <strong>原型链</strong> · 优化箭头关系</h1>
+        <div class="subtitle">点击任意节点 → 高亮其 <strong>__proto__</strong> 链（隐式原型链）</div>
+
+        <div class="canvas-wrapper">
+            <canvas id="canvas" width="1100" height="820"></canvas>
+        </div>
+
+        <div id="info">
+            <h3>📌 当前选中节点</h3>
+            <p id="detail">点击上方图形中的任意对象，查看它的原型链路径。</p>
+        </div>
+
+        <div class="legend">
+            <span class="legend-item">
+                <span class="legend-line proto arrow"></span> __proto__ 隐式原型链
+            </span>
+            <span class="legend-item">
+                <span class="legend-line prototype arrow"></span> prototype 显式原型指针
+            </span>
+            <span class="legend-item">
+                <span class="legend-line constructor"></span> constructor 构造器引用（虚线）
+            </span>
+            <span class="legend-item">
+                <span class="legend-line null"></span> 原型链终点 null
+            </span>
+        </div>
+        <div class="tip">
+            💡 每个构造函数都有一个 <code>prototype</code> 指向原型对象，每个实例都有一个 <code>__proto__</code> 指向其构造函数的原型。
+            <button class="btn-reset" id="resetBtn">重置高亮</button>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const detailEl = document.getElementById('detail');
+
+            // -------- 节点数据（重新布局，更清晰） --------
+            const nodes = [
+                // 顶层原型
+                { id: 'objProto', label: 'Object.prototype', subtitle: '顶级原型', x: 410, y: 60, type: 'prototype' },
+                // 构造函数层
+                { id: 'person', label: 'Person', subtitle: '构造函数', x: 150, y: 200, type: 'constructor' },
+                { id: 'func', label: 'Function', subtitle: '构造函数', x: 500, y: 200, type: 'constructor' },
+                { id: 'obj', label: 'Object', subtitle: '构造函数', x: 850, y: 200, type: 'constructor' },
+                // 原型对象层
+                { id: 'personProto', label: 'Person.prototype', subtitle: '原型对象', x: 150, y: 400, type: 'prototype' },
+                { id: 'funcProto', label: 'Function.prototype', subtitle: '原型对象', x: 500, y: 400, type: 'prototype' },
+                // 实例层
+                { id: 'p1', label: 'p1', subtitle: '实例对象', x: 150, y: 600, type: 'instance' },
+            ];
+
+            // 节点尺寸
+            const NODE_W = 150;
+            const NODE_H = 70;
+            const NODE_RADIUS = 10;
+
+            const COLORS = {
+                instance: { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' },
+                prototype: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
+                constructor: { bg: '#e0e7ff', border: '#6366f1', text: '#3730a3' },
+                highlight: { border: '#e11d48', glow: 'rgba(225,29,72,0.3)' },
+            };
+
+            // -------- 关系数据 --------
+            const relations = [
+                // __proto__ 链（红色）
+                { from: 'p1', to: 'personProto', type: '__proto__' },
+                { from: 'personProto', to: 'objProto', type: '__proto__' },
+                { from: 'funcProto', to: 'objProto', type: '__proto__' },
+                // 函数对象的 __proto__ 指向 Function.prototype
+                { from: 'person', to: 'funcProto', type: '__proto__' },
+                { from: 'func', to: 'funcProto', type: '__proto__' },
+                { from: 'obj', to: 'funcProto', type: '__proto__' },
+
+                // prototype 显式指针（蓝色）
+                { from: 'person', to: 'personProto', type: 'prototype' },
+                { from: 'func', to: 'funcProto', type: 'prototype' },
+                { from: 'obj', to: 'objProto', type: 'prototype' },
+
+                // constructor 引用（绿色虚线）
+                { from: 'personProto', to: 'person', type: 'constructor' },
+                { from: 'funcProto', to: 'func', type: 'constructor' },
+                { from: 'objProto', to: 'obj', type: 'constructor' },
+            ];
+
+            function getNode(id) {
+                return nodes.find(n => n.id === id);
+            }
+
+            // -------- 绘制圆角矩形 --------
+            function roundRect(ctx, x, y, w, h, r) {
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.lineTo(x + w - r, y);
+                ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                ctx.lineTo(x + w, y + h - r);
+                ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                ctx.lineTo(x + r, y + h);
+                ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                ctx.lineTo(x, y + r);
+                ctx.quadraticCurveTo(x, y, x + r, y);
+                ctx.closePath();
+            }
+
+            // -------- 绘制带贝塞尔曲线的箭头（优化版） --------
+            function drawBezierArrow(ctx, fromX, fromY, toX, toY, color, label, dashed = false, cpOffset = 40) {
+                // 计算中点和方向
+                const dx = toX - fromX;
+                const dy = toY - fromY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 5) return;
+
+                // 单位方向
+                const ux = dx / dist;
+                const uy = dy / dist;
+
+                // 缩短起点终点，避免覆盖节点
+                const shorten = 22;
+                const startX = fromX + ux * shorten;
+                const startY = fromY + uy * shorten;
+                const endX = toX - ux * shorten;
+                const endY = toY - uy * shorten;
+
+                // 控制点偏移方向：使用垂直向量（左/右），根据位置自动选择
+                const perpX = -uy;
+                const perpY = ux;
+                // 选择偏移方向：使得控制点偏向图形空白区域
+                // 简单策略：判断起点终点连线方向，让控制点向左上或右下
+                const sign = (dx * 0.5 + dy * 0.5 > 0) ? 1 : -1;
+                const cpX = (startX + endX) / 2 + cpOffset * perpX * sign;
+                const cpY = (startY + endY) / 2 + cpOffset * perpY * sign;
+
+                // 绘制曲线
+                ctx.save();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.5;
+                if (dashed) {
+                    ctx.setLineDash([6, 4]);
+                } else {
+                    ctx.setLineDash([]);
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.quadraticCurveTo(cpX, cpY, endX, endY);
+                ctx.stroke();
+
+                // 箭头三角形（在终点处，方向为切线方向）
+                const t = 0.95; // 接近终点处取切线
+                const mt = 1 - t;
+                const tangentX = 2 * mt * (cpX - startX) + 2 * t * (endX - cpX);
+                const tangentY = 2 * mt * (cpY - startY) + 2 * t * (endY - cpY);
+                const len = Math.sqrt(tangentX * tangentX + tangentY * tangentY);
+                if (len > 1) {
+                    const tx = tangentX / len;
+                    const ty = tangentY / len;
+                    const headLen = 12;
+                    const headAngle = Math.PI / 6;
+                    const arrowX = endX - tx * 4; // 稍微后移使箭头尖在终点
+                    const arrowY = endY - ty * 4;
+
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.moveTo(arrowX, arrowY);
+                    ctx.lineTo(
+                        arrowX - headLen * Math.cos(Math.atan2(ty, tx) - headAngle),
+                        arrowY - headLen * Math.sin(Math.atan2(ty, tx) - headAngle)
+                    );
+                    ctx.lineTo(
+                        arrowX - headLen * Math.cos(Math.atan2(ty, tx) + headAngle),
+                        arrowY - headLen * Math.sin(Math.atan2(ty, tx) + headAngle)
+                    );
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                // 标签（放在控制点位置偏移）
+                if (label) {
+                    const labelX = cpX + 20 * (perpX * sign);
+                    const labelY = cpY + 20 * (perpY * sign);
+                    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                    ctx.shadowColor = 'rgba(0,0,0,0.1)';
+                    ctx.shadowBlur = 6;
+                    const metrics = ctx.measureText(label);
+                    const tw = metrics.width + 14;
+                    const th = 26;
+                    roundRect(ctx, labelX - tw / 2, labelY - th / 2, tw, th, 8);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = color;
+                    ctx.font = 'bold 13px "Segoe UI", "PingFang SC", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(label, labelX, labelY + 1);
+                }
+                ctx.restore();
+            }
+
+            // -------- 绘制主函数 --------
+            let highlightedNodeId = null;
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // 1. 绘制所有关系
+                relations.forEach(rel => {
+                    const from = getNode(rel.from);
+                    const to = getNode(rel.to);
+                    if (!from || !to) return;
+
+                    let color, label, dashed = false;
+                    let offset = 40;
+                    if (rel.type === '__proto__') {
+                        color = '#e74c3c';
+                        label = '__proto__';
+                        dashed = false;
+                        // 对某些关系调整偏移避免重叠
+                        if ((rel.from === 'person' && rel.to === 'funcProto') ||
+                            (rel.from === 'obj' && rel.to === 'funcProto')) {
+                            offset = -50;
+                        }
+                        if (rel.from === 'p1' && rel.to === 'personProto') offset = 30;
+                        if (rel.from === 'personProto' && rel.to === 'objProto') offset = -40;
+                        if (rel.from === 'funcProto' && rel.to === 'objProto') offset = 40;
+                    } else if (rel.type === 'prototype') {
+                        color = '#3498db';
+                        label = 'prototype';
+                        dashed = false;
+                        if (rel.from === 'person' && rel.to === 'personProto') offset = -50;
+                        if (rel.from === 'func' && rel.to === 'funcProto') offset = 50;
+                        if (rel.from === 'obj' && rel.to === 'objProto') offset = -40;
+                    } else if (rel.type === 'constructor') {
+                        color = '#2ecc71';
+                        label = 'constructor';
+                        dashed = true;
+                        offset = 30;
+                        if (rel.from === 'objProto' && rel.to === 'obj') offset = -40;
+                    }
+
+                    drawBezierArrow(ctx, from.x, from.y, to.x, to.y, color, label, dashed, offset);
+                });
+
+                // 绘制指向 null 的箭头（从 Object.prototype 到 null）
+                const objProto = getNode('objProto');
+                if (objProto) {
+                    const nullX = objProto.x + NODE_W / 2 + 50;
+                    const nullY = objProto.y - 40;
+                    ctx.save();
+                    ctx.strokeStyle = '#95a5a6';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([]);
+                    ctx.beginPath();
+                    ctx.moveTo(objProto.x + NODE_W / 2 - 5, objProto.y - 5);
+                    ctx.lineTo(nullX, nullY);
+                    ctx.stroke();
+                    ctx.fillStyle = '#95a5a6';
+                    ctx.beginPath();
+                    ctx.arc(nullX, nullY, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#2c3e50';
+                    ctx.font = 'bold 13px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText('null', nullX, nullY - 12);
+                    ctx.restore();
+                }
+
+                // 2. 绘制所有节点（在线上层）
+                nodes.forEach(node => {
+                    const isHighlighted = (highlightedNodeId && isNodeOnProtoChain(node.id, highlightedNodeId));
+                    const isSelected = (node.id === highlightedNodeId);
+
+                    const x = node.x - NODE_W / 2;
+                    const y = node.y - NODE_H / 2;
+
+                    let bg = COLORS[node.type].bg;
+                    let border = COLORS[node.type].border;
+                    let textColor = COLORS[node.type].text;
+
+                    if (isSelected) {
+                        border = '#e11d48';
+                        ctx.shadowColor = 'rgba(225,29,72,0.5)';
+                        ctx.shadowBlur = 18;
+                    } else if (isHighlighted) {
+                        border = '#e11d48';
+                        ctx.shadowColor = 'rgba(225,29,72,0.2)';
+                        ctx.shadowBlur = 12;
+                    } else {
+                        ctx.shadowColor = 'transparent';
+                        ctx.shadowBlur = 0;
+                    }
+
+                    ctx.save();
+                    ctx.shadowBlur = ctx.shadowBlur;
+                    ctx.shadowColor = ctx.shadowColor || 'transparent';
+                    ctx.fillStyle = bg;
+                    ctx.strokeStyle = border;
+                    ctx.lineWidth = isSelected ? 3.5 : 2;
+                    roundRect(ctx, x, y, NODE_W, NODE_H, NODE_RADIUS);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                    ctx.shadowBlur = 0;
+
+                    // 文字
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.font = 'bold 16px "Segoe UI", "PingFang SC", sans-serif';
+                    ctx.fillStyle = textColor;
+                    ctx.fillText(node.label, node.x, node.y - 8);
+
+                    ctx.font = '12px "Segoe UI", "PingFang SC", sans-serif';
+                    ctx.fillStyle = '#4b5563';
+                    ctx.fillText(node.subtitle, node.x, node.y + 18);
+
+                    // 原型对象显示 constructor 小标签
+                    if (node.type === 'prototype') {
+                        const constrNode = relations.find(r => r.from === node.id && r.type === 'constructor');
+                        if (constrNode) {
+                            const target = getNode(constrNode.to);
+                            if (target) {
+                                ctx.font = '10px sans-serif';
+                                ctx.fillStyle = '#2ecc71';
+                                ctx.fillText('↘ constructor: ' + target.label, node.x + 55, node.y + 32);
+                            }
+                        }
+                    }
+                });
+            }
+
+            // -------- 判断某节点是否在高亮节点的原型链上 --------
+            function isNodeOnProtoChain(nodeId, highlightId) {
+                if (nodeId === highlightId) return true;
+                let currentId = highlightId;
+                for (let i = 0; i < 10; i++) {
+                    const rel = relations.find(r => r.from === currentId && r.type === '__proto__');
+                    if (!rel) break;
+                    const nextId = rel.to;
+                    if (nextId === nodeId) return true;
+                    currentId = nextId;
+                }
+                return false;
+            }
+
+            // -------- 获取原型链路径 --------
+            function getProtoChainText(nodeId) {
+                const parts = [];
+                let currentId = nodeId;
+                for (let i = 0; i < 10; i++) {
+                    const node = getNode(currentId);
+                    if (node) parts.push(node.label);
+                    else break;
+                    const rel = relations.find(r => r.from === currentId && r.type === '__proto__');
+                    if (!rel) break;
+                    currentId = rel.to;
+                }
+                parts.push('null');
+                return parts.join(' → ');
+            }
+
+            // -------- 点击处理 --------
+            function handleCanvasClick(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const mouseX = (e.clientX - rect.left) * scaleX;
+                const mouseY = (e.clientY - rect.top) * scaleY;
+
+                let clickedNode = null;
+                for (let i = nodes.length - 1; i >= 0; i--) {
+                    const node = nodes[i];
+                    const x = node.x - NODE_W / 2;
+                    const y = node.y - NODE_H / 2;
+                    if (mouseX >= x && mouseX <= x + NODE_W && mouseY >= y && mouseY <= y + NODE_H) {
+                        clickedNode = node;
+                        break;
+                    }
+                }
+
+                if (clickedNode) {
+                    highlightedNodeId = clickedNode.id;
+                    const chain = getProtoChainText(clickedNode.id);
+                    const typeMap = {
+                        instance: '实例对象',
+                        prototype: '原型对象',
+                        constructor: '构造函数'
+                    };
+                    const typeDesc = typeMap[clickedNode.type] || '';
+                    detailEl.innerHTML = `
+                        <strong>${clickedNode.label}</strong> （${typeDesc}）<br>
+                        <span style="color:#2c3e50;">🔗 原型链路径：</span>
+                        <span class="highlight">${chain}</span>
+                        <br><span style="color:#7f8c8d;font-size:14px;">
+                        （点击其他节点查看不同路径，点击「重置高亮」取消高亮）
+                        </span>
+                    `;
+                } else {
+                    // 点击空白处不取消高亮，但可保持
+                }
+                draw();
+            }
+
+            function resetHighlight() {
+                highlightedNodeId = null;
+                detailEl.innerHTML = '点击上方图形中的任意对象，查看它的原型链路径。';
+                draw();
+            }
+
+            // -------- 初始化 --------
+            canvas.addEventListener('click', handleCanvasClick);
+            document.getElementById('resetBtn').addEventListener('click', resetHighlight);
+            draw();
+
+            // 默认选中 p1
+            setTimeout(() => {
+                highlightedNodeId = 'p1';
+                const chain = getProtoChainText('p1');
+                detailEl.innerHTML = `
+                    <strong>p1</strong> （实例对象）<br>
+                    <span style="color:#2c3e50;">🔗 原型链路径：</span>
+                    <span class="highlight">${chain}</span>
+                    <br><span style="color:#7f8c8d;font-size:14px;">
+                    （点击其他节点查看不同路径，点击「重置高亮」取消高亮）
+                    </span>
+                `;
+                draw();
+            }, 100);
+
+            window.addEventListener('resize', () => draw());
+        })();
+    </script>
+</body>
+
+</html>

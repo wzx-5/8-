@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript this 核心面试八股速查</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-green: #4ade80;
+            --accent-purple: #c084fc;
+            --accent-orange: #fb923c;
+            --code-bg: #090d16;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            color: var(--accent-blue);
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-sub);
+            font-size: 0.95rem;
+        }
+
+        .q-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        }
+
+        .q-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+
+        .q-badge {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent-blue);
+            font-size: 0.85rem;
+            font-weight: bold;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .q-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .answer-box {
+            color: var(--text-sub);
+            font-size: 0.98rem;
+        }
+
+        .answer-box strong {
+            color: var(--text-main);
+        }
+
+        .list-item {
+            margin-bottom: 0.6rem;
+            padding-left: 0.5rem;
+        }
+
+        code {
+            background: var(--code-bg);
+            color: var(--accent-orange);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: Consolas, Monaco, monospace;
+            font-size: 0.9em;
+            border: 1px solid #1e293b;
+        }
+
+        .highlight-box {
+            background: rgba(74, 222, 128, 0.08);
+            border-left: 3px solid var(--accent-green);
+            padding: 0.75rem 1rem;
+            margin-top: 0.75rem;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.9rem;
+            color: #e2e8f0;
+        }
+
+        /* Comparison Table Style */
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .compare-table th,
+        .compare-table td {
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+        }
+
+        .compare-table th {
+            background: var(--code-bg);
+            color: var(--accent-blue);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <h1>JS this 核心八股速查</h1>
+            <p>高频必背背诵模板</p>
+        </header>
+
+        <!-- 八股一 -->
+        <div class="q-card">
+            <div class="q-header">
+                <span class="q-badge">八股 01</span>
+                <h2 class="q-title">this 的指向到底是怎么决定的？（核心口诀）</h2>
+            </div>
+            <div class="answer-box">
+                <p style="margin-bottom: 0.75rem;">
+                    <strong>标准回答：</strong><code>this</code> 的指向<strong>不是在定义时决定的，而是在函数运行时决定的</strong>（箭头函数除外）。主要有以下 4
+                    种绑定规则，优先级从高到低为：
+                </p>
+                <div class="list-item">
+                    <strong>1. new 绑定：</strong>如 <code>new Foo()</code>，<code>this</code> 指向<strong>新创建的实例对象</strong>。
+                </div>
+                <div class="list-item">
+                    <strong>2. 显式绑定：</strong>通过 <code>call</code> / <code>apply</code> / <code>bind</code>
+                    强行绑定，<code>this</code> 指向<strong>指定的第一个参数</strong>。
+                </div>
+                <div class="list-item">
+                    <strong>3. 隐式绑定：</strong>通过对象方法调用，如 <code>obj.foo()</code>，<code>this</code> 指向<strong>上下文对象
+                        <code>obj</code></strong>。
+                </div>
+                <div class="list-item">
+                    <strong>4. 默认绑定：</strong>独立函数直接调用，如 <code>foo()</code>。非严格模式指向 <code>window</code> /
+                    <code>global</code>，严格模式指向 <code>undefined</code>。
+                </div>
+
+                <div class="highlight-box">
+                    💡 <strong>特例：</strong>箭头函数没有自己的 <code>this</code>，它会继承<strong>声明时外层最近的普通作用域的
+                        <code>this</code></strong>。
+                </div>
+            </div>
+        </div>
+
+        <!-- 八股二 -->
+        <div class="q-card">
+            <div class="q-header">
+                <span class="q-badge">八股 02</span>
+                <h2 class="q-title">call、apply、bind 三者的区别是什么？</h2>
+            </div>
+            <div class="answer-box">
+                <p style="margin-bottom: 0.75rem;">
+                    <strong>标准回答：</strong>三者的共同点是：<strong>都能改变函数内部的 <code>this</code> 指向</strong>。核心区别在于执行方式与传参形式：
+                </p>
+                <table class="compare-table">
+                    <thead>
+                        <tr>
+                            <th>API</th>
+                            <th>执行方式</th>
+                            <th>传参形式</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>call</code></td>
+                            <td><strong>立即调用</strong>函数</td>
+                            <td>参数列表，逐个传入（如 <code>fn.call(obj, a, b)</code>）</td>
+                        </tr>
+                        <tr>
+                            <td><code>apply</code></td>
+                            <td><strong>立即调用</strong>函数</td>
+                            <td>数组/类数组（如 <code>fn.apply(obj, [a, b])</code>）</td>
+                        </tr>
+                        <tr>
+                            <td><code>bind</code></td>
+                            <td><strong>返回新函数</strong>，不立即执行</td>
+                            <td>支持柯里化，可分步传参（如 <code>fn.bind(obj, a)(b)</code>）</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 八股三 -->
+        <div class="q-card">
+            <div class="q-header">
+                <span class="q-badge">八股 03</span>
+                <h2 class="q-title">为什么箭头函数不能用作构造函数（不能 new）？</h2>
+            </div>
+            <div class="answer-box">
+                <p style="margin-bottom: 0.75rem;">
+                    <strong>标准回答：</strong>如果对箭头函数使用 <code>new</code> 会直接报错，原因有以下三点：
+                </p>
+                <div class="list-item">
+                    <strong>1. 没有自己的 this：</strong>箭头函数的 <code>this</code> 是在定义时捕获外层作用域的，而 <code>new</code>
+                    操作符的核心步骤是把新创建的对象绑定给函数的 <code>this</code>，箭头函数无法做到这一点。
+                </div>
+                <div class="list-item">
+                    <strong>2. 没有 prototype 属性：</strong>普通函数都有 <code>prototype</code> 显式原型，而箭头函数没有，因此无法挂载实例原型。
+                </div>
+                <div class="list-item">
+                    <strong>3. 没有 arguments 对象：</strong>箭头函数内部没有 <code>arguments</code>，只能用 rest
+                    参数（<code>...args</code>）替代。
+                </div>
+            </div>
+        </div>
+
+        <!-- 八股四 -->
+        <div class="q-card">
+            <div class="q-header">
+                <span class="q-badge">八股 04</span>
+                <h2 class="q-title">什么是“隐式丢失”？怎么解决？</h2>
+            </div>
+            <div class="answer-box">
+                <p style="margin-bottom: 0.5rem;">
+                    <strong>定义：</strong>当一个对象的方法被<strong>赋值给一个变量</strong>，或者作为<strong>回调函数传递</strong>时，方法会脱离原对象，变成“独立函数调用”，导致原本的隐式绑定失效，退化为默认绑定（指向
+                    <code>window</code> 或 <code>undefined</code>），这就是<strong>隐式丢失</strong>。
+                </p>
+                <p style="margin-bottom: 0.5rem;">
+                    <strong>常见场景：</strong><code>setTimeout(obj.fn, 1000)</code> 或 <code>var f = obj.fn; f();</code>
+                </p>
+                <div class="highlight-box">
+                    <strong>解决办法：</strong>
+                    <br>1. 使用<strong>箭头函数</strong>包裹：<code>setTimeout(() => obj.fn(), 1000)</code>
+                    <br>2. 使用 <strong>bind</strong> 强行锁定：<code>setTimeout(obj.fn.bind(obj), 1000)</code>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

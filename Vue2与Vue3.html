@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vue2 与 Vue3 面试八股速记手册</title>
+<style>
+  :root{
+    --bg:#f5f6fa; --card:#ffffff; --border:#e3e6ef;
+    --text:#1f2430; --muted:#6b7280;
+    --primary:#2f6fed; --primary-bg:#eaf1fe;
+    --accent:#7c3aed; --accent-bg:#f1eafe;
+    --warn:#d97706; --warn-bg:#fef3e2;
+    --danger:#dc2626; --danger-bg:#fdeaea;
+    --ok:#059669; --ok-bg:#e7f8f1;
+    --code-bg:#0f172a; --code-text:#e2e8f0;
+    --radius:10px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth; scroll-padding-top:70px;}
+  body{
+    font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.7; font-size:14.5px;
+  }
+  header.topbar{
+    position:fixed; top:0; left:0; right:0; height:56px; z-index:100;
+    background:linear-gradient(90deg,#9a1f1f,#2f6fed 55%,#7c3aed);
+    color:#fff; display:flex; align-items:center; padding:0 22px;
+    box-shadow:0 2px 10px rgba(30,58,138,.25);
+  }
+  header.topbar h1{font-size:16px; font-weight:700;}
+  header.topbar .tag{
+    margin-left:12px; font-size:11.5px; background:rgba(255,255,255,.18);
+    padding:2px 9px; border-radius:20px;
+  }
+  .menu-btn{display:none; margin-left:auto; background:none; border:none; color:#fff; font-size:22px; cursor:pointer;}
+  .layout{display:flex; max-width:1500px; margin:56px auto 0;}
+  /* 侧边栏 */
+  nav.sidebar{
+    width:252px; flex-shrink:0; height:calc(100vh - 56px);
+    position:sticky; top:56px; overflow-y:auto; background:var(--card);
+    border-right:1px solid var(--border); padding:16px 12px 40px;
+  }
+  nav.sidebar .nav-title{font-size:12px; color:var(--muted); font-weight:700; margin:14px 8px 6px; letter-spacing:.5px;}
+  nav.sidebar a{
+    display:block; padding:6px 11px; border-radius:7px; color:var(--text);
+    text-decoration:none; font-size:13px; border-left:3px solid transparent;
+  }
+  nav.sidebar a:hover{background:var(--primary-bg); color:var(--primary);}
+  nav.sidebar a.active{background:var(--primary-bg); color:var(--primary); border-left-color:var(--primary); font-weight:600;}
+  main.content{flex:1; min-width:0; padding:24px 28px 60px;}
+  section{margin-bottom:44px; scroll-margin-top:70px;}
+  .section-head{display:flex; align-items:center; gap:10px; margin-bottom:16px; padding-bottom:8px; border-bottom:2px solid var(--border);}
+  .section-head .num{
+    width:30px; height:30px; border-radius:8px; flex-shrink:0; background:var(--primary);
+    color:#fff; font-weight:700; display:flex; align-items:center; justify-content:center; font-size:15px;
+  }
+  .section-head h2{font-size:20px;}
+  .section-desc{color:var(--muted); font-size:13px; margin:-8px 0 16px 40px;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; margin-bottom:14px;}
+  .card h3{font-size:15px; margin-bottom:8px; color:var(--primary);}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr;}}
+  .tip{border-radius:8px; padding:9px 13px; margin:10px 0; font-size:13px; border:1px solid;}
+  .tip.t-warn{background:var(--warn-bg); border-color:#f3d9a8; color:#92400e;}
+  .tip.t-danger{background:var(--danger-bg); border-color:#f3b8b8; color:#991b1b;}
+  .tip.t-ok{background:var(--ok-bg); border-color:#a7e3cd; color:#065f46;}
+  .tip.t-info{background:var(--primary-bg); border-color:#bcd0fb; color:#1e40af;}
+  pre.code{
+    background:var(--code-bg); color:var(--code-text); border-radius:8px;
+    padding:13px 15px; overflow-x:auto; margin:10px 0; font-size:12.5px;
+    font-family:"Consolas","Courier New",monospace; line-height:1.65; white-space:pre;
+  }
+  pre.code .kw{color:#c792ea;} pre.code .tp{color:#82aaff;} pre.code .st{color:#c3e88d;}
+  pre.code .cm{color:#637777; font-style:italic;} pre.code .fn{color:#82aaff;} pre.code .num{color:#f78c6c;}
+  .table-wrap{overflow-x:auto; margin:10px 0;}
+  table{width:100%; border-collapse:collapse; font-size:13px; background:var(--card);}
+  th,td{border:1px solid var(--border); padding:8px 10px; text-align:left; vertical-align:top;}
+  th{background:var(--primary-bg); color:#1e40af; font-weight:700; white-space:nowrap;}
+  tr:nth-child(even) td{background:#fafbff;}
+  ul.clean{margin:6px 0 6px 20px;} ul.clean li{margin:3px 0;} ul.clean li::marker{color:var(--primary);}
+  .inline-code{background:#eef1f8; color:#b91c1c; padding:1px 6px; border-radius:5px; font-family:"Consolas","Courier New",monospace; font-size:12.5px;}
+  .badge{display:inline-block; font-size:11px; padding:0 7px; border-radius:12px; margin-left:5px; vertical-align:2px; font-weight:400;}
+  .badge.hot{background:var(--danger-bg); color:#dc2626; border:1px solid #f3b8b8;}
+  .badge.write{background:var(--ok-bg); color:#059669; border:1px solid #a7e3cd;}
+  .badge.mistake{background:var(--warn-bg); color:#b45309; border:1px solid #f3d9a8;}
+  /* 八股问答卡片 */
+  details.qa{border:1px solid var(--border); border-radius:9px; margin:10px 0; background:var(--card); overflow:hidden;}
+  details.qa summary{
+    padding:10px 14px; cursor:pointer; font-weight:700; color:var(--text);
+    background:#fbfcff; list-style:none; display:flex; gap:8px; align-items:center; font-size:14px;
+  }
+  details.qa summary::before{content:"Q"; color:var(--danger); font-weight:900;}
+  details.qa summary:hover{background:var(--primary-bg);}
+  details.qa[open] summary{background:var(--primary-bg); color:var(--primary);}
+  details.qa .a{padding:10px 14px; font-size:13.5px; border-top:1px dashed var(--border);}
+  .a .ans{background:var(--ok-bg); border-radius:6px; padding:8px 10px; margin:6px 0;}
+  .a .ans::before{content:"🗣️ 背这句  "; color:var(--ok); font-weight:900;}
+  .a .pts{color:var(--text);}
+  .a .pts::before{content:"🔑 展开要点  "; color:var(--primary); font-weight:900;}
+  .a .memo{background:var(--accent-bg); border-radius:6px; padding:6px 10px; margin:6px 0; font-size:13px;}
+  .a .memo::before{content:"💡 口诀  "; color:var(--accent); font-weight:900;}
+  /* 手写题 */
+  .code-wrap{border:1px solid var(--border); border-radius:9px; overflow:hidden; margin:8px 0;}
+  .code-wrap .cw-title{background:var(--primary-bg); color:#1e40af; font-weight:700; font-size:13px; padding:6px 12px;}
+  .code-wrap pre.code{margin:0; border-radius:0;}
+  /* 易错速记 */
+  .err-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media(max-width:900px){.err-grid{grid-template-columns:1fr;}}
+  .err-item{background:var(--warn-bg); border:1px solid #f3d9a8; border-radius:8px; padding:8px 11px; font-size:13px; color:#92400e;}
+  .err-item strong{color:#b45309;}
+  /* 图 */
+  .diagram{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin:12px 0; overflow-x:auto;}
+  .diagram .cap{text-align:center; font-size:12.5px; color:var(--muted); margin-top:6px;}
+  svg text{font-family:"Microsoft YaHei",sans-serif;}
+  .box{fill:#fff; stroke:var(--primary); stroke-width:1.5;}
+  .box.fill{fill:var(--primary); stroke:var(--primary);}
+  .box.fill-green{fill:var(--ok); stroke:var(--ok);}
+  .box.fill-orange{fill:var(--warn); stroke:var(--warn);}
+  .box.acc{stroke:var(--accent);}
+  .box.fill-acc{fill:var(--accent); stroke:var(--accent);}
+  .box.orange{stroke:var(--warn);}
+  .box.red{stroke:var(--danger);} .box.fill-red{fill:var(--danger); stroke:var(--danger);}
+  .box.blue{stroke:#2563eb;} .box.fill-blue{fill:#2563eb; stroke:#2563eb;}
+  .edge{stroke:var(--muted); stroke-width:1.5; fill:none;}
+  .edge.arrow{marker-end:url(#arrow);}
+  .edge.blue{stroke:var(--primary);} .edge.orange{stroke:var(--warn);} .edge.acc{stroke:var(--accent);}
+  .lbl{fill:#333; font-size:12px;} .lbl.white{fill:#fff;} .lbl.bold{font-weight:700;} .lbl.sm{font-size:10.5px; fill:var(--muted);}
+  /* 自测 */
+  .quiz{font-size:13.5px;}
+  .quiz li{margin:5px 0;}
+  footer{text-align:center; color:var(--muted); font-size:12.5px; padding:24px 0 30px;}
+  @media(max-width:900px){
+    nav.sidebar{position:fixed; left:-260px; transition:left .25s; z-index:99; top:56px; height:calc(100vh - 56px); width:252px; box-shadow:0 0 20px rgba(0,0,0,.15);}
+    nav.sidebar.open{left:0;}
+    .menu-btn{display:block;}
+    main.content{padding:18px 14px 50px;}
+  }
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:#c3c9d6; border-radius:4px;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Vue2 与 Vue3 面试八股速记</h1>
+  <span class="tag">韦恩图 + 对比 + 问答 · 直接开答</span>
+  <button class="menu-btn" onclick="document.querySelector('nav.sidebar').classList.toggle('open')">☰</button>
+</header>
+
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="nav-title">必背问答区</div>
+    <a href="#sA">A. 韦恩图总览（一图看懂）</a>
+    <a href="#sB">B. Vue2 核心要点</a>
+    <a href="#sC">C. Vue3 核心要点</a>
+    <a href="#sD">D. V2 vs V3 对比总表</a>
+    <div class="nav-title">专项速记</div>
+    <a href="#sE">必背问答（28 题）</a>
+    <a href="#sF">易错点快筛</a>
+    <a href="#sG">关系图·归纳图</a>
+    <a href="#sH">面试自测清单</a>
+  </nav>
+
+  <main class="content">
+
+    <!-- ===== 开场：使用说明 ===== -->
+    <div class="card" style="background:linear-gradient(135deg,#1e3a8a,#2f6fed 55%,#7c3aed); border:none; color:#fff;">
+      <h3 style="color:#fff; font-size:17px;">🧭 使用说明（30 秒看完）</h3>
+      <p style="color:#e0e7ff; font-size:13px;">先看 <strong style="color:#fff;">A 韦恩图</strong>建立 V2/V3 交并关系框架，再按 <strong style="color:#fff;">B/C 要点 + D 对比表</strong>记知识点，最后背 <strong style="color:#fff;">E 问答</strong>。高频题已打 <span class="badge hot">🔥必考</span>、<span class="badge write">🖊️手写</span>、<span class="badge mistake">⚠️易错</span> 标。</p>
+      <div class="tip t-danger" style="border-color:rgba(255,255,255,.35); color:#ffe4e6; background:rgba(220,38,38,.22);"><strong>⚠️ 先记这个：</strong>Vue 2.7 是 Vue2 的最后一个版本，官方维护已于 <strong>2023-12-31 停止（EOL）</strong>。面试问"新项目选什么"一律答 Vue3。</div>
+    </div>
+
+    <!-- ================= A、韦恩图总览 ================= -->
+    <section id="sA">
+      <div class="section-head"><span class="num">A</span><h2>韦恩图总览：Vue2 与 Vue3 的关系</h2></div>
+      <p class="section-desc">三个圈就是全部考点框架：向左（红）= Vue2 独有，向右（蓝）= Vue3 独有，中间（绿）= 两版共有。</p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 880 470" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- 两个主圆 + 交集 -->
+          <circle cx="315" cy="240" r="182" fill="#dc2626" opacity="0.14" stroke="#dc2626" stroke-width="2.5"/>
+          <circle cx="565" cy="240" r="182" fill="#2563eb" opacity="0.14" stroke="#2563eb" stroke-width="2.5"/>
+          <ellipse cx="440" cy="240" rx="104" ry="168" fill="#059669" opacity="0.12" stroke="#059669" stroke-width="2" stroke-dasharray="6 4"/>
+          <!-- 标题 -->
+          <text x="245" y="106" text-anchor="middle" class="lbl bold" fill="#dc2626" font-size="15">Vue2 独有</text>
+          <text x="635" y="106" text-anchor="middle" class="lbl bold" fill="#2563eb" font-size="15">Vue3 独有</text>
+          <text x="440" y="88" text-anchor="middle" class="lbl bold" fill="#059669" font-size="15">两版共有</text>
+          <!-- Vue2 独有 -->
+          <g font-size="10.5" fill="#444">
+            <text x="248" y="128" text-anchor="middle">Options API</text>
+            <text x="248" y="143" text-anchor="middle">Object.defineProperty</text>
+            <text x="248" y="158" text-anchor="middle">filters 过滤器</text>
+            <text x="248" y="173" text-anchor="middle">$on / $off 事件总线</text>
+            <text x="248" y="188" text-anchor="middle">new Vue 全局构造</text>
+            <text x="248" y="203" text-anchor="middle">Vue.set / Vue.delete</text>
+            <text x="248" y="218" text-anchor="middle">v-model = value + input</text>
+            <text x="248" y="233" text-anchor="middle">.sync 修饰符</text>
+            <text x="248" y="248" text-anchor="middle">slot-scope 作用域插槽</text>
+            <text x="248" y="263" text-anchor="middle">beforeDestroy / destroyed</text>
+            <text x="248" y="278" text-anchor="middle">Vue.prototype 全局挂载</text>
+            <text x="248" y="293" text-anchor="middle">Vue.extend</text>
+          </g>
+          <!-- 共有 -->
+          <g font-size="10.5" fill="#065f46">
+            <text x="440" y="128" text-anchor="middle">模板语法 v-if / v-for</text>
+            <text x="440" y="143" text-anchor="middle">组件 props / emit</text>
+            <text x="440" y="158" text-anchor="middle">插槽（概念一致）</text>
+            <text x="440" y="173" text-anchor="middle">computed / watch</text>
+            <text x="440" y="188" text-anchor="middle">生命周期阶段思想</text>
+            <text x="440" y="203" text-anchor="middle">虚拟 DOM + diff</text>
+            <text x="440" y="218" text-anchor="middle">$nextTick 异步更新</text>
+            <text x="440" y="233" text-anchor="middle">keep-alive 缓存</text>
+            <text x="440" y="248" text-anchor="middle">单向数据流</text>
+            <text x="440" y="263" text-anchor="middle">指令 / mixin</text>
+            <text x="440" y="278" text-anchor="middle">provide / inject</text>
+            <text x="440" y="293" text-anchor="middle">vue-router 路由</text>
+            <text x="440" y="308" text-anchor="middle">SFC 单文件组件</text>
+          </g>
+          <!-- Vue3 独有 -->
+          <g font-size="10.5" fill="#444">
+            <text x="632" y="128" text-anchor="middle">Composition API</text>
+            <text x="632" y="143" text-anchor="middle">script setup 语法糖</text>
+            <text x="632" y="158" text-anchor="middle">Proxy 响应式（懒代理）</text>
+            <text x="632" y="173" text-anchor="middle">Teleport / Suspense</text>
+            <text x="632" y="188" text-anchor="middle">Fragment 多根节点</text>
+            <text x="632" y="203" text-anchor="middle">patchFlag / 静态提升</text>
+            <text x="632" y="218" text-anchor="middle">多 v-model + modelValue</text>
+            <text x="632" y="233" text-anchor="middle">defineProps / defineEmits</text>
+            <text x="632" y="248" text-anchor="middle">createApp 应用级 API</text>
+            <text x="632" y="263" text-anchor="middle">组合式函数 composables</text>
+            <text x="632" y="278" text-anchor="middle">TS 一等公民</text>
+            <text x="632" y="293" text-anchor="middle">Pinia 状态管理</text>
+          </g>
+          <!-- 图例 -->
+          <rect x="150" y="430" width="14" height="14" rx="3" fill="#dc2626" opacity=".55"/>
+          <text x="172" y="442" class="lbl sm" font-size="11" fill="#444">Vue2 独有</text>
+          <rect x="330" y="430" width="14" height="14" rx="3" fill="#059669" opacity=".55"/>
+          <text x="352" y="442" class="lbl sm" font-size="11" fill="#444">两版共有</text>
+          <rect x="510" y="430" width="14" height="14" rx="3" fill="#2563eb" opacity=".55"/>
+          <text x="532" y="442" class="lbl sm" font-size="11" fill="#444">Vue3 独有</text>
+        </svg>
+        <div class="cap">韦恩图：核心结论 —— Vue3 不是推倒重来，而是"底层响应式重写 + 编译优化 + 提供组合式新写法"，模板/组件/路由等骨架完全继承。</div>
+      </div>
+
+      <div class="tip t-info"><strong>一句话总结关系：</strong>Vue3 = Vue2 的 <strong>升级内核（Proxy 响应式 + 更快 diff + 编译优化）</strong> + <strong>新增风格（Composition API）</strong>，同时<strong>保留大部分 Vue2 语法</strong>（Options API 兼容、模板指令不变），迁移成本主要在 API 层而非模板层。</div>
+    </section>
+
+    <!-- ================= B、Vue2 核心要点 ================= -->
+    <section id="sB">
+      <div class="section-head"><span class="num">B</span><h2>Vue2 核心要点</h2></div>
+
+      <div class="card">
+        <h3>① 响应式原理与三大局限（必背）</h3>
+        <p>核心：初始化时<strong>递归遍历 data 每个 key</strong>，用 <span class="inline-code">Object.defineProperty</span> 劫持 <strong>get/set</strong>。get 时<strong>收集依赖</strong>（Dep 存 Watcher），set 时<strong>派发更新</strong>。</p>
+        <ul class="clean">
+          <li><strong>局限 1：无法侦测属性"新增/删除"</strong> → 必须用 <span class="inline-code">Vue.set(obj, key, val)</span> / <span class="inline-code">vm.$set</span>（删除用 <span class="inline-code">Vue.delete</span>）；</li>
+          <li><strong>局限 2：无法侦测"数组下标赋值"和 length 修改</strong> → 重写 7 个变更方法 <span class="inline-code">push/pop/shift/unshift/splice/sort/reverse</span> 触发更新；</li>
+          <li><strong>局限 3：对象要递归劫持</strong>，深层嵌套对象初始化性能差。</li>
+        </ul>
+        <div class="tip t-warn"><strong>常见场景：</strong>① 动态给 <span class="inline-code">this.xxx.新字段 = 1</span> 页面不更新 → 用 $set；② 直接 <span class="inline-code">this.arr[0] = 1</span> 不更新 → 用 <span class="inline-code">splice(0,1,1)</span> 或 $set。数组元素若是对象仍会被递归响应式化。</div>
+      </div>
+
+      <div class="card">
+        <h3>② 生命周期（8 + 2 钩子）</h3>
+        <div class="table-wrap"><table>
+          <tr><th>阶段</th><th>钩子</th><th>要点 / 面试点</th></tr>
+          <tr><td>创建</td><td><span class="inline-code">beforeCreate → created</span></td><td>beforeCreate 拿不到 data；created 可拿 data，适合<strong>发初始请求</strong>（此时 DOM 未渲染）</td></tr>
+          <tr><td>挂载</td><td><span class="inline-code">beforeMount → mounted</span></td><td>mounted 时 DOM 就绪，适合操作 DOM / 初始化 echarts</td></tr>
+          <tr><td>更新</td><td><span class="inline-code">beforeUpdate → updated</span></td><td>数据变化 → DOM 更新前后；updated 里改数据会死循环</td></tr>
+          <tr><td>销毁</td><td><span class="inline-code">beforeDestroy → destroyed</span></td><td>beforeDestroy 里<strong>清理定时器 / 移除监听 / $off</strong>，防内存泄漏</td></tr>
+          <tr><td>缓存</td><td><span class="inline-code">activated / deactivated</span></td><td>配合 keep-alive，组件切换不销毁而是"激活/失活"</td></tr>
+          <tr><td>错误</td><td><span class="inline-code">errorCaptured</span></td><td>捕获子孙组件错误，可用于全局错误上报</td></tr>
+        </table></div>
+        <div class="tip t-info"><strong>created vs mounted：</strong>created 在渲染前（拿不到 DOM），mounted 在渲染后（能操作 DOM）。发请求两者都行，但要看"要不要依赖渲染结果"。</div>
+      </div>
+
+      <div class="card">
+        <h3>③ 组件通信 8 法（面试必聊）</h3>
+        <div class="table-wrap"><table>
+          <tr><th>方式</th><th>方向</th><th>使用场景</th></tr>
+          <tr><td><span class="inline-code">props / $emit</span></td><td>父子</td><td>最常用，父传子用 props，子通知父用 emit</td></tr>
+          <tr><td><span class="inline-code">$refs</span></td><td>父 → 子</td><td>直接拿子组件实例调方法（跨层不推荐）</td></tr>
+          <tr><td><span class="inline-code">$parent / $children</span></td><td>父子</td><td>不推荐，耦合高；Vue3 已移除 $children</td></tr>
+          <tr><td><span class="inline-code">$attrs / $listeners</span></td><td>祖先 → 后代</td><td>透传未声明为 props 的属性 / 事件（写高阶组件）</td></tr>
+          <tr><td><span class="inline-code">provide / inject</span></td><td>跨层级</td><td>祖先注入，后代任意深度取用；默认<strong>非响应式</strong>（2.x）</td></tr>
+          <tr><td><span class="inline-code">EventBus</span></td><td>任意</td><td><span class="inline-code">$on/$emit/$off</span> 兄弟/任意通信；<strong>记得 beforeDestroy 里 $off，否则内存泄漏</strong></td></tr>
+          <tr><td><span class="inline-code">Vuex</span></td><td>全局</td><td>跨页面/多组件共享状态，严格单向数据流</td></tr>
+          <tr><td><span class="inline-code">slot</span></td><td>父 → 子</td><td>父组件向子组件分发结构（默认/具名/作用域）</td></tr>
+        </table></div>
+      </div>
+
+      <div class="card">
+        <h3>④ v-model 与 .sync（都是语法糖）</h3>
+        <ul class="clean">
+          <li>v-model 默认对应 <span class="inline-code">value</span> prop + <span class="inline-code">input</span> 事件（组件上要自己声明）；</li>
+          <li><span class="inline-code">.sync</span> 对应 <span class="inline-code">update:xxx</span> 事件，用于"修改多个 prop"；2.6 之后与 v-model 概念统一。</li>
+        </ul>
+        <pre class="code js">// 自定义组件实现 v-model
+Vue.component('my-input', {
+  props: ['value'],
+  template: '&lt;input :value="value" @input="$emit(\'input\', $event.target.value)" /&gt;'
+})</pre>
+      </div>
+
+      <div class="card">
+        <h3>⑤ v-for 与 v-if 优先级 / key</h3>
+        <ul class="clean">
+          <li><strong>Vue2 中 v-for 优先级高于 v-if</strong>：先循环再判断，浪费性能，且 v-if 拿不到 v-for 变量时直接报错；</li>
+          <li>最佳实践：把 v-if 放<strong>外层</strong>，或用<strong>计算属性过滤</strong>后再 v-for；</li>
+          <li>key 用<strong>唯一稳定 id</strong>，不要用 index（头部插入会错位复用，输入框内容串位）。</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>⑥ $nextTick 与异步更新</h3>
+        <p>数据变化 → <strong>Watcher 去重后进队列</strong> → <strong>微任务里统一冲刷</strong>（Vue2.5+ 用 Promise，兼容降级 MutationObserver / setImmediate / setTimeout）。<span class="inline-code">$nextTick</span> 回调排在冲刷之后，所以能拿到更新后的 DOM。</p>
+        <div class="tip t-warn"><strong>常见场景：</strong>① v-if 显示元素后立刻操作该 DOM；② created 里拿渲染结果；③ 批量改多个数据只触发一次更新。</div>
+      </div>
+
+      <div class="card">
+        <h3>⑦ 指令 / 过滤器 / 插槽 / mixin</h3>
+        <ul class="clean">
+          <li><strong>filters：</strong>模板管道语法 <span class="inline-code">{{ val | format }}</span>，全局/局部注册；<strong>Vue3 已移除</strong>；</li>
+          <li><strong>slot：</strong>默认插槽 + 具名插槽 <span class="inline-code">&lt;template #header&gt;</span>（2.6 后统一 v-slot）+ 作用域插槽 <span class="inline-code">slot-scope="props"</span>；</li>
+          <li><strong>mixin：</strong>选项合并规则 —— <strong>data 组件优先</strong>；生命周期钩子 <strong>mixin 先执行、组件后执行</strong>；同名 methods 组件覆盖 mixin；</li>
+          <li><strong>自定义指令：</strong>钩子 <span class="inline-code">bind / inserted / update / componentUpdated / unbind</span>（Vue3 改名）。</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>⑧ 全局 API 与实例 API 清单（Vue3 大改的部分）</h3>
+        <div class="grid2">
+          <div>
+            <strong>全局：</strong><span class="inline-code">Vue.use / Vue.component / Vue.directive / Vue.mixin / Vue.extend / Vue.nextTick / Vue.set / Vue.delete / Vue.prototype.xxx</span>
+          </div>
+          <div>
+            <strong>实例：</strong><span class="inline-code">$on / $off / $emit / $once / $refs / $attrs / $listeners / $parent / $children / $nextTick / $set / $delete</span>
+          </div>
+        </div>
+        <div class="tip t-danger"><strong>迁移重点：</strong>这些 API 在 Vue3 中几乎全部"应用级化"（<span class="inline-code">app.component / app.use / app.config.globalProperties</span>），<span class="inline-code">$on/$off/$once、$children</span> 直接移除。</div>
+      </div>
+    </section>
+
+    <!-- ================= C、Vue3 核心要点 ================= -->
+    <section id="sC">
+      <div class="section-head"><span class="num">C</span><h2>Vue3 核心要点</h2></div>
+
+      <div class="card">
+        <h3>① 响应式：Proxy + 懒代理（必背）</h3>
+        <ul class="clean">
+          <li>用 <span class="inline-code">new Proxy(target, handler)</span> 代理<strong>整个对象</strong>，拦截 <span class="inline-code">get / set / deleteProperty / has / ownKeys</span>；</li>
+          <li><strong>懒代理：</strong>只有 get 到某个属性时才用 <span class="inline-code">Reflect.get</span> 拿到结果并递归代理，初始化<strong>不递归</strong>，性能更好；</li>
+          <li>新增/删除属性、数组下标、length、Map/Set 都能侦测 → <strong>不需要 $set</strong>，也不需要重写数组方法；</li>
+          <li>局限：<strong>不能代理基本类型</strong>（要用 ref）；Proxy 无法在 IE11 使用（Vue3 放弃 IE11）。</li>
+        </ul>
+        <pre class="code js">// Vue3 响应式核心（简版）
+function reactive(target) {
+  return new Proxy(target, {
+    get(t, k, r) {
+      track(t, k)                       // 收集依赖
+      const res = Reflect.get(t, k, r)
+      return typeof res === 'object' &amp;&amp; res !== null ? reactive(res) : res // 懒递归
+    },
+    set(t, k, v, r) {
+      const old = Reflect.get(t, k, r)
+      const ok = Reflect.set(t, k, v, r)
+      if (old !== v) trigger(t, k)      // 派发更新
+      return ok
+    },
+    deleteProperty(t, k) {
+      const had = Reflect.has(t, k)
+      const ok = Reflect.deleteProperty(t, k)
+      if (had) trigger(t, k)            // 删除也能触发
+      return ok
+    }
+  })
+}</pre>
+      </div>
+
+      <div class="card">
+        <h3>② Composition API 全家桶</h3>
+        <ul class="clean">
+          <li><span class="inline-code">setup(props, ctx)</span> 在 beforeCreate 之后、created 之前执行，是组合式入口；</li>
+          <li><span class="inline-code">ref</span>（基本类型，JS 里要 <span class="inline-code">.value</span>，模板自动解包）/ <span class="inline-code">reactive</span>（对象）/ <span class="inline-code">computed</span> / <span class="inline-code">watch</span> / <span class="inline-code">watchEffect</span>；</li>
+          <li>生命周期用 <span class="inline-code">onMounted / onUnmounted</span> 等；响应式数据跨组件复用用 <span class="inline-code">provide / inject</span>（Vue3 默认响应式）；</li>
+          <li><span class="inline-code">toRefs / toRef</span> 保解构响应性；<span class="inline-code">shallowRef / shallowReactive / readonly</span> 做性能优化；</li>
+          <li><strong>script setup 语法糖（3.2+）：</strong>顶层变量直接用，defineProps / defineEmits / defineExpose / withDefaults 免 import。</li>
+        </ul>
+        <pre class="code js">&lt;script setup&gt;
+import { ref, computed, onMounted } from 'vue'
+const count = ref(0)                       // 模板里直接用 count，不用 .value
+const double = computed(() =&gt; count.value * 2)
+const props = defineProps({ title: String })
+const emit = defineEmits(['change'])
+onMounted(() =&gt; console.log('mounted', props.title))
+&lt;/script&gt;</pre>
+      </div>
+
+      <div class="card">
+        <h3>③ 生命周期改名对照（必背表格）</h3>
+        <div class="table-wrap"><table>
+          <tr><th>Vue2</th><th>Vue3（setup 内）</th><th>说明</th></tr>
+          <tr><td><span class="inline-code">beforeCreate</span></td><td><span class="inline-code">setup()</span></td><td>合并进 setup，无同名钩子</td></tr>
+          <tr><td><span class="inline-code">created</span></td><td><span class="inline-code">setup()</span></td><td>合并进 setup</td></tr>
+          <tr><td><span class="inline-code">beforeMount</span></td><td><span class="inline-code">onBeforeMount</span></td><td>—</td></tr>
+          <tr><td><span class="inline-code">mounted</span></td><td><span class="inline-code">onMounted</span></td><td>—</td></tr>
+          <tr><td><span class="inline-code">beforeUpdate</span></td><td><span class="inline-code">onBeforeUpdate</span></td><td>—</td></tr>
+          <tr><td><span class="inline-code">updated</span></td><td><span class="inline-code">onUpdated</span></td><td>—</td></tr>
+          <tr><td><span class="inline-code">beforeDestroy</span></td><td><span class="inline-code">onBeforeUnmount</span></td><td><span class="badge mistake">⚠️改名</span></td></tr>
+          <tr><td><span class="inline-code">destroyed</span></td><td><span class="inline-code">onUnmounted</span></td><td><span class="badge mistake">⚠️改名</span></td></tr>
+          <tr><td><span class="inline-code">activated</span></td><td><span class="inline-code">onActivated</span></td><td>keep-alive</td></tr>
+          <tr><td><span class="inline-code">errorCaptured</span></td><td><span class="inline-code">onErrorCaptured</span></td><td>—</td></tr>
+        </table></div>
+      </div>
+
+      <div class="card">
+        <h3>④ v-model 新语法</h3>
+        <ul class="clean">
+          <li>默认 prop：<span class="inline-code">value</span> → <span class="inline-code">modelValue</span>；默认事件：<span class="inline-code">input</span> → <span class="inline-code">update:modelValue</span>；</li>
+          <li>支持<strong>一个组件多个 v-model</strong>：<span class="inline-code">v-model:title</span> + <span class="inline-code">v-model:content</span>；</li>
+          <li>支持<strong>自定义修饰符</strong>（3.4+ 可用 <span class="inline-code">defineModel</span> 简化）；</li>
+          <li><span class="inline-code">.sync</span> 被 <span class="inline-code">v-model:xxx</span> 替代。</li>
+        </ul>
+        <pre class="code js">// 子组件：多 v-model + 修饰符
+props: { modelValue: String, title: String, modelModifiers: { default: () =&gt; ({}) } }
+// 父组件
+&lt;Child v-model="msg" v-model:title="title" /&gt;</pre>
+      </div>
+
+      <div class="card">
+        <h3>⑤ 新特性四件套</h3>
+        <div class="table-wrap"><table>
+          <tr><th>特性</th><th>作用</th><th>常见场景</th></tr>
+          <tr><td><span class="inline-code">Fragment</span></td><td>支持多根节点（Vue2 必须单根）</td><td>减少无意义包裹层 div</td></tr>
+          <tr><td><span class="inline-code">Teleport</span></td><td>把 DOM 传送到指定容器（如 body）</td><td>模态框/弹窗/通知，摆脱 overflow/z-index 层级限制</td></tr>
+          <tr><td><span class="inline-code">Suspense</span></td><td>异步组件加载的占位/回退</td><td>异步子组件加载态（loading → done）</td></tr>
+          <tr><td><span class="inline-code">defineAsyncComponent</span></td><td>异步组件新写法（替代 Vue2 的 factory 函数）</td><td>路由/组件懒加载</td></tr>
+        </table></div>
+      </div>
+
+      <div class="card">
+        <h3>⑥ 编译优化：Vue3 为什么快</h3>
+        <ul class="clean">
+          <li><strong>patchFlag：</strong>编译时给动态节点打标记，diff 时只对比"有变化的属性"，静态内容直接跳过；</li>
+          <li><strong>静态提升（hoistStatic）：</strong>完全静态的节点只创建一次、被复用，不参与更新；</li>
+          <li><strong>事件缓存（cacheHandlers）：</strong>绑定事件缓存复用，避免重复创建内联函数；</li>
+          <li><strong>Block Tree：</strong>把动态子节点收集到 block，diff 时跳过整棵静态子树。</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>⑦ 移除与变更清单（迁移必查）</h3>
+        <div class="table-wrap"><table>
+          <tr><th>Vue2 写法</th><th>Vue3 替代</th></tr>
+          <tr><td><span class="inline-code">filters</span></td><td>计算属性 / 方法</td></tr>
+          <tr><td><span class="inline-code">$on / $off / $once</span>（事件总线）</td><td>mitt（轻量库）或 Pinia</td></tr>
+          <tr><td><span class="inline-code">Vue.prototype.xxx</span></td><td><span class="inline-code">app.config.globalProperties.xxx</span></td></tr>
+          <tr><td><span class="inline-code">new Vue()</span></td><td><span class="inline-code">createApp()</span></td></tr>
+          <tr><td><span class="inline-code">.sync</span></td><td><span class="inline-code">v-model:xxx</span></td></tr>
+          <tr><td><span class="inline-code">$children</span></td><td>已移除（用 provide/inject 或 ref）</td></tr>
+          <tr><td><span class="inline-code">$listeners</span></td><td>并入 <span class="inline-code">$attrs</span></td></tr>
+          <tr><td><span class="inline-code">异步组件 factory</span></td><td><span class="inline-code">defineAsyncComponent</span></td></tr>
+          <tr><td><span class="inline-code">指令 bind/inserted/unbind</span></td><td><span class="inline-code">beforeMount/mounted/beforeUnmount</span></td></tr>
+          <tr><td><span class="inline-code">render 里全局 h</span></td><td><span class="inline-code">import { h } from 'vue'</span></td></tr>
+        </table></div>
+      </div>
+
+      <div class="card">
+        <h3>⑧ 组合式函数 composables 与 Pinia</h3>
+        <ul class="clean">
+          <li><strong>composables：</strong>把"状态 + 副作用"抽成 <span class="inline-code">useXxx()</span> 函数，显式传参返回，解决 mixin 的命名冲突与来源不透明，天然支持 TS 推导；</li>
+          <li><strong>Pinia：</strong>Vue3 官方状态管理，<strong>移除 mutation</strong>，支持 Composition 风格，TS 友好，devtools 好用；Vuex 4 也可用但官方已推荐 Pinia。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ================= D、V2 vs V3 对比总表 ================= -->
+    <section id="sD">
+      <div class="section-head"><span class="num">D</span><h2>Vue2 vs Vue3 对比总表</h2></div>
+      <p class="section-desc">面试官最爱横向对比，这张表背下来就赢了。记不住就只记三句话：<strong>响应式重写、编译优化、API 换皮。</strong></p>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <tr><th>维度</th><th>Vue2</th><th>Vue3</th></tr>
+          <tr><td>响应式原理</td><td>Object.defineProperty（属性级、递归）</td><td>Proxy（对象级、懒代理、拦截全）</td></tr>
+          <tr><td>新增/删除属性</td><td>侦测不到，需 <span class="inline-code">$set / $delete</span></td><td>原生侦测，无需 $set</td></tr>
+          <tr><td>数组监听</td><td>重写 7 个变更方法，下标赋值无效</td><td>Proxy 直接侦测，下标/length/Map/Set 都行</td></tr>
+          <tr><td>API 风格</td><td>Options API</td><td>Options API + Composition API（script setup）</td></tr>
+          <tr><td>数据声明</td><td><span class="inline-code">data(){ return {...} }</span></td><td><span class="inline-code">ref / reactive</span>（JS 中 .value）</td></tr>
+          <tr><td>v-model</td><td><span class="inline-code">value + input</span>，单个</td><td><span class="inline-code">modelValue + update:modelValue</span>，可多个、可自定义修饰符</td></tr>
+          <tr><td>生命周期</td><td>beforeCreate/destroyed 等</td><td>setup 顶替前两者，onXxx 注册，beforeDestroy→beforeUnmount 改名</td></tr>
+          <tr><td>diff 算法</td><td>双端比较（四指针）</td><td>快速 diff + 最长递增子序列（移动更少）</td></tr>
+          <tr><td>编译优化</td><td>无 patchFlag/静态提升/事件缓存</td><td>patchFlag、静态提升、事件缓存、Block Tree</td></tr>
+          <tr><td>filters</td><td>支持</td><td>移除（用 computed/方法）</td></tr>
+          <tr><td>事件总线</td><td><span class="inline-code">$on/$off/$once</span></td><td>移除（用 mitt / Pinia）</td></tr>
+          <tr><td>全局 API</td><td><span class="inline-code">Vue.use / Vue.component / Vue.prototype</span></td><td><span class="inline-code">createApp().use / .component / config.globalProperties</span></td></tr>
+          <tr><td>组件根节点</td><td>必须单根</td><td>支持多根（Fragment）</td></tr>
+          <tr><td>新内置组件</td><td>—</td><td>Teleport / Suspense / Fragment</td></tr>
+          <tr><td>TS 支持</td><td>勉强，类型不友好</td><td>一等公民，重写全部类型</td></tr>
+          <tr><td>状态管理</td><td>Vuex</td><td>Pinia（官方推荐）</td></tr>
+          <tr><td>异步组件</td><td>factory 函数</td><td><span class="inline-code">defineAsyncComponent</span></td></tr>
+          <tr><td>自定义渲染器</td><td>—</td><td><span class="inline-code">createRenderer</span> 跨平台渲染</td></tr>
+          <tr><td>v-for / v-if 优先级</td><td>v-for 优先（先循环再判断）</td><td>v-if 优先（先判断再循环）</td></tr>
+          <tr><td>包体积</td><td>全量引入</td><td>tree-shaking 按需引入，更小</td></tr>
+          <tr><td>浏览器支持</td><td>IE9+</td><td>IE11 不支持（Proxy）</td></tr>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ================= E、必背问答 ================= -->
+    <section id="sE">
+      <div class="section-head"><span class="num">E</span><h2>面试必背问答（28 题）</h2></div>
+      <p class="section-desc">每题先背"🗣️ 背这句"的口语答案，再记"🔑 要点"和"💡 口诀"。</p>
+
+      <details class="qa"><summary>1. Vue2 响应式原理？有什么局限？<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">核心是 <strong>Object.defineProperty</strong>：初始化时递归遍历 data 每个属性劫持 get/set，get 收集依赖（Dep→Watcher），set 派发更新。局限：① 侦测不到新增/删除属性；② 侦测不到数组下标赋值和 length；③ 递归劫持性能差。</div>
+        <div class="pts"><ul class="clean">
+          <li>新增/删除 → 用 <span class="inline-code">Vue.set / Vue.delete</span>；</li>
+          <li>数组 → 重写 7 个变更方法，下标赋值要用 <span class="inline-code">splice</span>。</li>
+        </ul></div>
+        <div class="memo">"defineProperty = 属性级 + 要递归 + 新增删除数组有盲区。"</div>
+      </div></details>
+
+      <details class="qa"><summary>2. Vue3 为什么用 Proxy 代替 defineProperty？<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">Proxy 代理<strong>整个对象</strong>，能拦截 get/set/deleteProperty/has/ownKeys，所以新增/删除属性、数组下标、length、Map/Set 全能侦测，不用 $set 和数组 hack。而且是<strong>懒代理</strong>：只有 get 到才递归代理，初始化不递归，性能更好。</div>
+        <div class="pts"><ul class="clean">
+          <li>defineProperty 代理的是"属性"（遍历+递归）；Proxy 代理的是"对象"（惰性+全能）；</li>
+          <li>Proxy 不能用 polyfill，所以 Vue3 放弃 IE11；</li>
+          <li>配合 <span class="inline-code">Reflect</span> 保证 this 指向正确。</li>
+        </ul></div>
+        <div class="memo">"Proxy = 整对象 + 懒代理 + 全能拦截；defineProperty = 单属性 + 递归 + 有盲区。"</div>
+      </div></details>
+
+      <details class="qa"><summary>3. ref 和 reactive 的区别？怎么选？<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">ref 主要处理<strong>基本类型</strong>（底层其实是 reactive 包一层 <span class="inline-code">{value}</span>），模板自动解包、JS 里要 <span class="inline-code">.value</span>；reactive 只能代理<strong>对象/数组</strong>，不能代理基本类型。</div>
+        <div class="pts"><ul class="clean">
+          <li>基本类型用 ref，复杂对象用 reactive；</li>
+          <li>reactive 解构会丢响应性 → 用 <span class="inline-code">toRefs</span>；</li>
+          <li>现在官方更推荐"全用 ref"（3.4+ 自动解包更友好）。</li>
+        </ul></div>
+        <div class="memo">"ref 管基本类型要 .value，reactive 管对象，解构要 toRefs。"</div>
+      </div></details>
+
+      <details class="qa"><summary>4. Vue3 为什么比 Vue2 快？<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">四个原因：① <strong>响应式用 Proxy 懒代理</strong>，初始化不递归所有属性；② <strong>编译期优化</strong>——patchFlag 只标记并对比动态节点、静态提升（静态节点只创建一次）、事件缓存、Block Tree；③ <strong>diff 更快</strong>——快速 diff + 最长递增子序列，移动次数最少；④ <strong>tree-shaking</strong> 按需引入，包更小。</div>
+        <div class="pts"><ul class="clean">
+          <li>patchFlag：编译时打标记，运行时跳过静态对比；</li>
+          <li>静态提升：静态 VNode 创建一次复用；</li>
+          <li>cacheHandlers：事件处理函数缓存复用。</li>
+        </ul></div>
+        <div class="memo">"懒响应式 + 编译优化(patchFlag/静态提升/事件缓存) + 更优 diff + tree-shaking。"</div>
+      </div></details>
+
+      <details class="qa"><summary>5. Vue2 和 Vue3 的 diff 有什么区别？<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">相同：都是<strong>同层比较</strong>、都用 key 优化、复杂度都是 O(n)。不同：Vue2 用<strong>双端比较</strong>（oldStart/oldEnd/newStart/newEnd 四个指针两端交叉比较）；Vue3 先<strong>去掉头尾相同的公共部分</strong>，剩余 keyed 部分用<strong>最长递增子序列</strong>计算最小移动，DOM 移动更少更快。</div>
+        <div class="memo">"V2 双端四指针；V3 头尾先清 + LIS 最少移动。"</div>
+      </div></details>
+
+      <details class="qa"><summary>6. watch 和 watchEffect 的区别？<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">watch 是"<strong>指定源 + 回调</strong>"，显式声明监听谁，能拿到<strong>新旧值</strong>，默认惰性（不立即执行，除非 immediate），支持 deep；watchEffect <strong>自动收集依赖</strong>，回调里访问了哪些响应式数据就监听哪些，<strong>立即执行一次</strong>，拿不到新旧值。</div>
+        <div class="memo">"watch 显式有新旧值默认懒；watchEffect 自动收集立即跑无新旧值。"</div>
+      </div></details>
+
+      <details class="qa"><summary>7. computed 和 watch 的区别？</summary><div class="a">
+        <div class="ans">computed 有<strong>缓存</strong>（依赖不变不重算），用于<strong>派生数据</strong>，声明式；watch 是<strong>命令式监听副作用</strong>（发请求、操作 DOM、处理异步），支持 deep/immediate。能用 computed 就别用 watch。</div>
+        <div class="memo">"computed 缓存派生数据，watch 监听副作用。"</div>
+      </div></details>
+
+      <details class="qa"><summary>8. Vue3 中 v-model 有哪些变化？<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">① 默认 prop 由 <span class="inline-code">value</span> 改为 <span class="inline-code">modelValue</span>，事件由 <span class="inline-code">input</span> 改为 <span class="inline-code">update:modelValue</span>；② 支持<strong>一个组件多个 v-model</strong>（v-model:title 等）；③ 支持<strong>自定义修饰符</strong>（defineModel / props.modifiers）；④ <span class="inline-code">.sync</span> 被 <span class="inline-code">v-model:xxx</span> 替代。</div>
+        <div class="memo">"value→modelValue，input→update:modelValue，可多个，替代 .sync。"</div>
+      </div></details>
+
+      <details class="qa"><summary>9. 组件通信方式有哪些？（V2 / V3 分别说）<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">V2：props/$emit、$refs、$parent/$children、$attrs/$listeners、provide/inject、EventBus、Vuex、slot。V3：props/emit、defineExpose+ref、provide/inject（响应式）、Pinia、mitt（替代 EventBus）、$attrs（含原 $listeners）、slot。</div>
+        <div class="memo">"props 父子、refs 拿实例、inject 跨层、EventBus 兄弟、Vuex/Pinia 全局。"</div>
+      </div></details>
+
+      <details class="qa"><summary>10. Vue2 如何监听数组变化？为什么不能直接拦截下标？</summary><div class="a">
+        <div class="ans">重写了 <span class="inline-code">push/pop/shift/unshift/splice/sort/reverse</span> 7 个方法，调用时先执行原方法再触发更新。不直接拦截下标是因为给每个元素 defineProperty 成本高、数组大时性能差，Vue 选择放弃。改下标用 <span class="inline-code">$set</span> 或 <span class="inline-code">splice</span>。</div>
+        <div class="memo">"7 方法重写，下标赋值要用 $set/splice。"</div>
+      </div></details>
+
+      <details class="qa"><summary>11. $nextTick 原理？为什么能拿到更新后的 DOM？<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">数据变化 → <strong>Watcher 去重进队列</strong> → 在<strong>微任务</strong>中统一冲刷（Vue2.5+ 用 Promise，兼容降级 MutationObserver/setImmediate/setTimeout）。nextTick 回调排在冲刷之后，所以能拿到更新后的 DOM；它也返回 Promise，可 <span class="inline-code">await</span>。</div>
+        <div class="memo">"更新进队列→微任务批量冲刷→nextTick 排在后面执行。"</div>
+      </div></details>
+
+      <details class="qa"><summary>12. key 的作用？为什么不建议用 index？<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">key 是 VNode 在 diff 时的<strong>身份标识</strong>，决定节点是"复用/移动"还是"新建/删除"。用 index 做 key 的坑：<strong>数组头部插入时后面所有元素 key 都变</strong>，导致内容错位复用（比如输入框的值串到别的行），全部重新渲染。</div>
+        <div class="memo">"key 是身份证；index 会搬家导致错位复用，用唯一 id。"</div>
+      </div></details>
+
+      <details class="qa"><summary>13. v-for 和 v-if 优先级？为什么不能同时用？</summary><div class="a">
+        <div class="ans">Vue2 中 <strong>v-for 优先于 v-if</strong>（先循环再判断，白白多判断，且 v-if 访问不到 item 会报错）；Vue3 中 <strong>v-if 优先于 v-for</strong>（先判断再循环，item 未定义报错）。最佳实践：v-if 放外层，或用计算属性先过滤。</div>
+        <div class="memo">"V2 先 for 后 if，V3 先 if 后 for，都会踩坑 → 用计算属性过滤。"</div>
+      </div></details>
+
+      <details class="qa"><summary>14. Vue2 迁移到 Vue3 要注意什么？<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">① filters 移除（用 computed/方法）、$on/$off 移除（用 mitt）、$children 移除；② v-model 改 modelValue；③ 全局 API 改应用级（Vue.use→app.use、Vue.prototype→app.config.globalProperties）；④ 钩子改名 beforeDestroy→beforeUnmount、destroyed→unmounted；⑤ 异步组件用 defineAsyncComponent；⑥ .sync 改 v-model:xxx。</div>
+        <div class="memo">"filters/$on 删了、v-model 改名、全局 API 收进 app、钩子改名、async 组件换写法。"</div>
+      </div></details>
+
+      <details class="qa"><summary>15. 为什么 Vue3 移除 filters 和事件总线？</summary><div class="a">
+        <div class="ans">filters 的管道语法与 JS 割裂、调试困难、与 computed/methods 功能重叠、不利于 tree-shaking，官方建议用计算属性/方法。事件总线依赖 $on/$off 实例 API，在 Vue3 中与组合式响应式系统不配套，且跨组件通信<strong>隐性依赖难追踪</strong>，官方推荐 mitt 或 Pinia。</div>
+        <div class="memo">"filters 与 JS 割裂、总线难追踪 → 都砍，用更显式的方式。"</div>
+      </div></details>
+
+      <details class="qa"><summary>16. Teleport 的使用场景？</summary><div class="a">
+        <div class="ans">把组件 DOM 渲染到指定容器（如 body），脱离父级 DOM 层级。场景：<strong>模态框/弹窗</strong>（摆脱父级 overflow:hidden、z-index 层级困住）、<strong>通知/悬浮提示</strong>、全屏 loading、以及需要传送到指定挂载点的情况。</div>
+        <div class="memo">"弹窗、通知、悬浮层 → Teleport 传送到 body。"</div>
+      </div></details>
+
+      <details class="qa"><summary>17. 虚拟 DOM 是什么？为什么要它？<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">VNode 是真实 DOM 的<strong>轻量 JS 对象描述</strong>。好处：① <strong>跨平台</strong>（可自定义渲染器渲染到任意目标）；② 通过 <strong>diff 最小化 DOM 操作</strong>，避免频繁重排重绘；③ 声明式开发，不用手动操作 DOM。代价是内存与对比开销，所以 Vue3 用编译优化缩小 diff 范围。</div>
+        <div class="memo">"VNode = DOM 的 JS 描述，换来跨平台 + 最小化更新。"</div>
+      </div></details>
+
+      <details class="qa"><summary>18. mixin 有什么缺点？组合式函数怎么解决的？<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">mixin 缺点：<strong>命名冲突</strong>（属性/方法合并时覆盖）、<strong>来源不透明</strong>（数据不知道从哪来）、复用单元是配置项不灵活、多个 mixin 叠加难维护。组合式函数 <span class="inline-code">useXxx()</span> 显式传参、显式返回，天然解决冲突，逻辑内聚、利于 TS 推导。</div>
+        <div class="memo">"mixin 命名冲突 + 来源不透明；composable 显式传参返回，逻辑内聚。"</div>
+      </div></details>
+
+      <details class="qa"><summary>19. setup 什么时候执行？为什么 Vue3 没有 beforeCreate/created？<span class="badge mistake">⚠️易错</span></summary><div class="a">
+        <div class="ans">setup 在<strong>组件实例创建后、渲染前</strong>执行（beforeCreate 之后、created 之前）。Vue3 把 beforeCreate/created 合并进 setup（setup 里能直接拿 props/context），所以没有这两个钩子，其余钩子用 <span class="inline-code">onXxx</span> 注册。</div>
+        <div class="memo">"setup 顶替 beforeCreate/created，是组合式入口。"</div>
+      </div></details>
+
+      <details class="qa"><summary>20. reactive 解构后为什么丢响应性？怎么解决？</summary><div class="a">
+        <div class="ans">解构拿到的是<strong>值拷贝</strong>，脱离了 Proxy 代理，后续赋值只是普通变量。解决：用 <span class="inline-code">toRefs</span> 把每个属性转成 ref（模板自动解包可直用），单个属性用 <span class="inline-code">toRef</span>；只读用 <span class="inline-code">readonly</span>。</div>
+        <div class="memo">"解构 = 值拷贝脱离代理；toRefs 保响应。"</div>
+      </div></details>
+
+      <details class="qa"><summary>21. keep-alive 的原理？有哪些钩子？</summary><div class="a">
+        <div class="ans">keep-alive 是内置组件，<strong>缓存组件实例与 VNode</strong>，切换时组件不销毁而是"失活"，恢复时不重建而是"激活"。钩子：<span class="inline-code">activated / deactivated</span>（V3 中 onActivated/onDeactivated）。<span class="inline-code">include/exclude</span> 按 name 缓存，<span class="inline-code">max</span> 限制缓存数量（LRU 淘汰）。</div>
+        <div class="memo">"keep-alive = 缓存实例不销毁，LRU 淘汰，激活/失活钩子。"</div>
+      </div></details>
+
+      <details class="qa"><summary>22. 手写 Vue2 的 defineReactive 核心？<span class="badge write">🖊️手写常考</span></summary><div class="a">
+        <pre class="code js">function defineReactive(obj, key, val) {
+  observe(val)                       // 递归：子对象也变响应式
+  const dep = new Dep()              // 每个 key 一个依赖容器
+  Object.defineProperty(obj, key, {
+    get() {
+      if (Dep.target) dep.add(Dep.target)   // 收集当前 watcher
+      return val
+    },
+    set(newVal) {
+      if (newVal === val) return
+      val = newVal
+      observe(newVal)                // 新值也做响应式
+      dep.notify()                   // 通知 watcher 更新
+    }
+  })
+}</pre>
+        <div class="memo">"定义在属性上，get 收集、set 派发，赋值新值再 observe 一次。"</div>
+      </div></details>
+
+      <details class="qa"><summary>23. 手写 Vue3 reactive（Proxy 简版）？<span class="badge write">🖊️手写常考</span></summary><div class="a">
+        <pre class="code js">function reactive(target) {
+  return new Proxy(target, {
+    get(t, k, r) {
+      track(t, k)                    // 收集依赖
+      const res = Reflect.get(t, k, r)
+      return typeof res === 'object' &amp;&amp; res !== null
+        ? reactive(res) : res        // 懒递归：用到了才代理
+    },
+    set(t, k, v, r) {
+      const old = Reflect.get(t, k, r)
+      const ok = Reflect.set(t, k, v, r)
+      if (old !== v) trigger(t, k)   // 派发更新
+      return ok
+    },
+    deleteProperty(t, k) {
+      const had = Reflect.has(t, k)
+      const ok = Reflect.deleteProperty(t, k)
+      if (had) trigger(t, k)         // 删除也能触发
+      return ok
+    }
+  })
+}</pre>
+        <div class="memo">"代理整对象 + get 时懒递归 + 新旧值比较再触发。"</div>
+      </div></details>
+
+      <details class="qa"><summary>24. Vue3 的异步渲染与 nextTick 是什么关系？</summary><div class="a">
+        <div class="ans">响应式数据变化后，effect <strong>不立即执行</strong>，而是被调度器放进 job 队列<strong>去重</strong>，在<strong>微任务中批量 flush</strong>，这就是异步批量更新。<span class="inline-code">nextTick</span> 回调在 flush 之后执行，所以"改数据 → nextTick 里读 DOM"拿到的一定是更新后的。</div>
+        <div class="memo">"改动进队列 → 微任务批量冲刷 → nextTick 排在冲刷后。"</div>
+      </div></details>
+
+      <details class="qa"><summary>25. shallowRef / shallowReactive / triggerRef 是什么？</summary><div class="a">
+        <div class="ans">浅层响应式：<strong>只代理第一层</strong>，深层保持原值，适合大对象/大列表（不需要深层监听时）做性能优化。<span class="inline-code">shallowRef</span> 改 <span class="inline-code">.value</span> 才触发，深层属性变化不触发，需手动 <span class="inline-code">triggerRef</span> 强制刷新。</div>
+        <div class="memo">"浅层 = 只响应第一层，改深属性要手动 triggerRef。"</div>
+      </div></details>
+
+      <details class="qa"><summary>26. 选项式还是组合式？团队新项目怎么选？</summary><div class="a">
+        <div class="ans">小项目、简单组件、团队只熟 V2，选项式也完全可用；<strong>新项目、复杂逻辑、长组件、要复用和 TS 支持，推荐组合式（script setup）</strong>。两者可混用，Vue3 官方推荐组合式，但选项式完全兼容。</div>
+        <div class="memo">"简单用选项式，复杂/新项目用组合式，两者可混用。"</div>
+      </div></details>
+
+      <details class="qa"><summary>27. v-if 和 v-show 的区别？怎么选？<span class="badge hot">🔥必考</span></summary><div class="a">
+        <div class="ans">v-if 是<strong>真正创建/销毁</strong> DOM（有懒加载效果，切换有销毁重建开销）；v-show 是 <strong>display:none 切换</strong>（元素常驻，切换只改样式）。高频切换用 v-show，运行时条件几乎不变 / 要懒加载用 v-if。</div>
+        <div class="memo">"v-if 增删 DOM、v-show 只切 display；高频切换选 v-show。"</div>
+      </div></details>
+
+      <details class="qa"><summary>28. Vue2 中 data 为什么必须是函数？</summary><div class="a">
+        <div class="ans">因为<strong>组件是可复用的</strong>：如果 data 是对象，所有实例共享同一引用，一处修改处处变。写成函数每次实例化都<strong>返回全新对象</strong>，保证每个组件实例数据独立。（根实例 new Vue 可以不用函数。）</div>
+        <div class="memo">"data 函数返回新对象 = 每个组件实例数据隔离。"</div>
+      </div></details>
+    </section>
+
+    <!-- ================= F、易错点快筛 ================= -->
+    <section id="sF">
+      <div class="section-head"><span class="num">F</span><h2>易错点快筛</h2></div>
+      <p class="section-desc">全是面试官挖坑的点，考前扫一遍。</p>
+      <div class="card">
+        <div class="err-grid">
+          <div class="err-item"><strong>V2 数组下标赋值不更新：</strong><span class="inline-code">arr[0]=1</span> 无效，用 <span class="inline-code">$set/splice</span></div>
+          <div class="err-item"><strong>V2 新增属性不更新：</strong><span class="inline-code">obj.newKey=1</span> 无效，用 <span class="inline-code">Vue.set</span></div>
+          <div class="err-item"><strong>v-for 与 v-if 优先级：</strong>V2 先 for 后 if；V3 先 if 后 for，方向相反</div>
+          <div class="err-item"><strong>ref 在 JS 里忘 .value：</strong>模板自动解包，JS 中必须 <span class="inline-code">ref.value</span></div>
+          <div class="err-item"><strong>reactive 不能代理基本类型：</strong>字符串/数字要用 ref</div>
+          <div class="err-item"><strong>reactive 解构丢响应性：</strong>要 <span class="inline-code">toRefs</span> 保住</div>
+          <div class="err-item"><strong>生命周期改名：</strong><span class="inline-code">beforeDestroy→onBeforeUnmount</span>、<span class="inline-code">destroyed→onUnmounted</span></div>
+          <div class="err-item"><strong>v-model 默认属性：</strong>V2 是 <span class="inline-code">value/input</span>，V3 是 <span class="inline-code">modelValue/update:modelValue</span></div>
+          <div class="err-item"><strong>filters 在 V3 没了：</strong>别再说"Vue3 用 filters 格式化"，用 computed</div>
+          <div class="err-item"><strong>事件总线在 V3 没了：</strong><span class="inline-code">$on/$off</span> 已移除，用 mitt/Pinia</div>
+          <div class="err-item"><strong>Proxy 兼容性：</strong>Vue3 不支持 IE11（defineProperty 才支持）</div>
+          <div class="err-item"><strong>watch 默认不立即执行：</strong>要立即执行加 <span class="inline-code">immediate:true</span>；对象深度监听加 <span class="inline-code">deep:true</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= G、关系图·归纳图 ================= -->
+    <section id="sG">
+      <div class="section-head"><span class="num">G</span><h2>关系图 · 归纳图</h2></div>
+      <p class="section-desc">三张图串起全部考点：响应式原理对比、生命周期对比、知识全览归纳。</p>
+
+      <div class="diagram">
+        <h3 style="font-size:14px; color:var(--primary); margin:4px 0 8px;">① 响应式原理对比（V2 属性级 vs V3 对象级）</h3>
+        <svg viewBox="0 0 880 330" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker></defs>
+          <text x="225" y="22" text-anchor="middle" class="lbl bold" fill="#dc2626" font-size="14">Vue2 · defineProperty</text>
+          <text x="655" y="22" text-anchor="middle" class="lbl bold" fill="#2563eb" font-size="14">Vue3 · Proxy</text>
+          <!-- V2 列 -->
+          <rect x="40" y="40" width="370" height="40" class="box fill-red" rx="8"/>
+          <text x="225" y="59" text-anchor="middle" class="lbl white" font-size="12">初始化就递归遍历 data 每个 key</text>
+          <text x="225" y="74" text-anchor="middle" class="lbl white" font-size="11">（属性级劫持，深嵌套性能差）</text>
+          <line x1="225" y1="80" x2="225" y2="100" class="edge arrow"/>
+          <rect x="40" y="100" width="370" height="36" class="box red" rx="8"/>
+          <text x="225" y="122" text-anchor="middle" class="lbl bold" fill="#991b1b" font-size="12">Object.defineProperty 劫持 get / set</text>
+          <line x1="225" y1="136" x2="225" y2="156" class="edge arrow"/>
+          <rect x="40" y="156" width="370" height="36" class="box red" rx="8"/>
+          <text x="225" y="178" text-anchor="middle" class="lbl bold" fill="#991b1b" font-size="12">Dep 收集 → Watcher 派发更新</text>
+          <line x1="225" y1="192" x2="225" y2="212" class="edge arrow"/>
+          <rect x="40" y="212" width="370" height="54" class="box fill-red" rx="8"/>
+          <text x="225" y="233" text-anchor="middle" class="lbl white" font-size="12">局限：新增/删除属性、数组下标</text>
+          <text x="225" y="249" text-anchor="middle" class="lbl white" font-size="11">侦测不到 → 靠 $set / 数组 7 方法重写</text>
+          <!-- V3 列 -->
+          <rect x="470" y="40" width="370" height="40" class="box fill-blue" rx="8"/>
+          <text x="655" y="59" text-anchor="middle" class="lbl white" font-size="12">new Proxy(data) 代理整个对象</text>
+          <text x="655" y="74" text-anchor="middle" class="lbl white" font-size="11">（对象级拦截，懒代理不递归）</text>
+          <line x1="655" y1="80" x2="655" y2="100" class="edge arrow"/>
+          <rect x="470" y="100" width="370" height="36" class="box blue" rx="8"/>
+          <text x="655" y="122" text-anchor="middle" class="lbl bold" fill="#1e40af" font-size="12">拦截 get / set / deleteProperty / has / ownKeys</text>
+          <line x1="655" y1="136" x2="655" y2="156" class="edge arrow"/>
+          <rect x="470" y="156" width="370" height="36" class="box blue" rx="8"/>
+          <text x="655" y="178" text-anchor="middle" class="lbl bold" fill="#1e40af" font-size="12">track 收集 → trigger 派发（get 时懒递归）</text>
+          <line x1="655" y1="192" x2="655" y2="212" class="edge arrow"/>
+          <rect x="470" y="212" width="370" height="54" class="box fill-green" rx="8"/>
+          <text x="655" y="233" text-anchor="middle" class="lbl white" font-size="12">优势：新增/删除/数组下标/length/Map·Set</text>
+          <text x="655" y="249" text-anchor="middle" class="lbl white" font-size="11">全能侦测，无需 $set（但不支持 IE11）</text>
+          <!-- 底部结论 -->
+          <rect x="120" y="285" width="640" height="34" class="box orange" rx="8"/>
+          <text x="440" y="307" text-anchor="middle" class="lbl bold" fill="#b45309" font-size="12">结论：V3 = 更全（全能拦截）+ 更懒（性能好）+ 更简单（无 $set）</text>
+        </svg>
+        <div class="cap">图 1：defineProperty 劫持"属性"，Proxy 劫持"对象"；V3 因此更全、更懒、更简单</div>
+      </div>
+
+      <div class="diagram">
+        <h3 style="font-size:14px; color:var(--primary); margin:4px 0 8px;">② 生命周期对照（V2 钩子名 → V3 钩子名）</h3>
+        <svg viewBox="0 0 880 400" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <text x="185" y="22" text-anchor="middle" class="lbl bold" fill="#dc2626" font-size="13">Vue2</text>
+          <text x="440" y="22" text-anchor="middle" class="lbl bold" fill="#059669" font-size="13">阶段</text>
+          <text x="695" y="22" text-anchor="middle" class="lbl bold" fill="#2563eb" font-size="13">Vue3（setup 内）</text>
+          <!-- 行模板 -->
+          <g font-size="12">
+            <rect x="60" y="40" width="250" height="27" class="box red" rx="6"/><text x="185" y="58" text-anchor="middle" class="lbl bold" fill="#991b1b">beforeCreate</text>
+            <rect x="315" y="40" width="250" height="27" class="box fill-green" rx="6"/><text x="440" y="58" text-anchor="middle" class="lbl white" font-size="11">创建前</text>
+            <rect x="570" y="40" width="250" height="27" class="box blue" rx="6"/><text x="695" y="58" text-anchor="middle" class="lbl bold" fill="#1e40af">setup（替代）</text>
+
+            <rect x="60" y="72" width="250" height="27" class="box red" rx="6"/><text x="185" y="90" text-anchor="middle" class="lbl bold" fill="#991b1b">created</text>
+            <rect x="315" y="72" width="250" height="27" class="box fill-green" rx="6"/><text x="440" y="90" text-anchor="middle" class="lbl white" font-size="11">创建后</text>
+            <rect x="570" y="72" width="250" height="27" class="box blue" rx="6"/><text x="695" y="90" text-anchor="middle" class="lbl bold" fill="#1e40af">setup（替代）</text>
+
+            <rect x="60" y="104" width="250" height="27" class="box red" rx="6"/><text x="185" y="122" text-anchor="middle" class="lbl bold" fill="#991b1b">beforeMount</text>
+            <rect x="315" y="104" width="250" height="27" class="box fill-green" rx="6"/><text x="440" y="122" text-anchor="middle" class="lbl white" font-size="11">挂载前</text>
+            <rect x="570" y="104" width="250" height="27" class="box blue" rx="6"/><text x="695" y="122" text-anchor="middle" class="lbl bold" fill="#1e40af">onBeforeMount</text>
+
+            <rect x="60" y="136" width="250" height="27" class="box red" rx="6"/><text x="185" y="154" text-anchor="middle" class="lbl bold" fill="#991b1b">mounted</text>
+            <rect x="315" y="136" width="250" height="27" class="box fill-green" rx="6"/><text x="440" y="154" text-anchor="middle" class="lbl white" font-size="11">挂载后</text>
+            <rect x="570" y="136" width="250" height="27" class="box blue" rx="6"/><text x="695" y="154" text-anchor="middle" class="lbl bold" fill="#1e40af">onMounted</text>
+
+            <rect x="60" y="168" width="250" height="27" class="box red" rx="6"/><text x="185" y="186" text-anchor="middle" class="lbl bold" fill="#991b1b">beforeUpdate</text>
+            <rect x="315" y="168" width="250" height="27" class="box fill-green" rx="6"/><text x="440" y="186" text-anchor="middle" class="lbl white" font-size="11">更新前</text>
+            <rect x="570" y="168" width="250" height="27" class="box blue" rx="6"/><text x="695" y="186" text-anchor="middle" class="lbl bold" fill="#1e40af">onBeforeUpdate</text>
+
+            <rect x="60" y="200" width="250" height="27" class="box red" rx="6"/><text x="185" y="218" text-anchor="middle" class="lbl bold" fill="#991b1b">updated</text>
+            <rect x="315" y="200" width="250" height="27" class="box fill-green" rx="6"/><text x="440" y="218" text-anchor="middle" class="lbl white" font-size="11">更新后</text>
+            <rect x="570" y="200" width="250" height="27" class="box blue" rx="6"/><text x="695" y="218" text-anchor="middle" class="lbl bold" fill="#1e40af">onUpdated</text>
+
+            <rect x="60" y="232" width="250" height="27" class="box fill-red" rx="6"/><text x="185" y="250" text-anchor="middle" class="lbl white" font-size="12">beforeDestroy ⚠️改名</text>
+            <rect x="315" y="232" width="250" height="27" class="box fill-green" rx="6"/><text x="440" y="250" text-anchor="middle" class="lbl white" font-size="11">卸载前</text>
+            <rect x="570" y="232" width="250" height="27" class="box fill-blue" rx="6"/><text x="695" y="250" text-anchor="middle" class="lbl white" font-size="12">onBeforeUnmount</text>
+
+            <rect x="60" y="264" width="250" height="27" class="box fill-red" rx="6"/><text x="185" y="282" text-anchor="middle" class="lbl white" font-size="12">destroyed ⚠️改名</text>
+            <rect x="315" y="264" width="250" height="27" class="box fill-green" rx="6"/><text x="440" y="282" text-anchor="middle" class="lbl white" font-size="11">卸载后</text>
+            <rect x="570" y="264" width="250" height="27" class="box fill-blue" rx="6"/><text x="695" y="282" text-anchor="middle" class="lbl white" font-size="12">onUnmounted</text>
+
+            <rect x="60" y="296" width="250" height="27" class="box red" rx="6"/><text x="185" y="314" text-anchor="middle" class="lbl bold" fill="#991b1b">activated</text>
+            <rect x="315" y="296" width="250" height="27" class="box fill-green" rx="6"/><text x="440" y="314" text-anchor="middle" class="lbl white" font-size="11">激活（keep-alive）</text>
+            <rect x="570" y="296" width="250" height="27" class="box blue" rx="6"/><text x="695" y="314" text-anchor="middle" class="lbl bold" fill="#1e40af">onActivated</text>
+
+            <rect x="60" y="328" width="250" height="27" class="box red" rx="6"/><text x="185" y="346" text-anchor="middle" class="lbl bold" fill="#991b1b">errorCaptured</text>
+            <rect x="315" y="328" width="250" height="27" class="box fill-green" rx="6"/><text x="440" y="346" text-anchor="middle" class="lbl white" font-size="11">错误捕获</text>
+            <rect x="570" y="328" width="250" height="27" class="box blue" rx="6"/><text x="695" y="346" text-anchor="middle" class="lbl bold" fill="#1e40af">onErrorCaptured</text>
+          </g>
+        </svg>
+        <div class="cap">图 2：只有"卸载前/卸载后"改了名，创建阶段被 setup 合并；activate/error 钩子概念完全不变</div>
+      </div>
+
+      <div class="diagram">
+        <h3 style="font-size:14px; color:var(--primary); margin:4px 0 8px;">③ 知识全览归纳图（一图归总全部考点）</h3>
+        <svg viewBox="0 0 880 470" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <rect x="305" y="12" width="270" height="44" class="box fill" rx="9"/>
+          <text x="440" y="33" text-anchor="middle" class="lbl white bold" font-size="14">Vue 面试知识体系</text>
+          <text x="440" y="49" text-anchor="middle" class="lbl white" font-size="10">V2 基础 + V3 进阶 · 一图归总</text>
+          <!-- 连线 -->
+          <g class="edge"><line x1="440" y1="56" x2="110" y2="82"/><line x1="440" y1="56" x2="330" y2="82"/><line x1="440" y1="56" x2="550" y2="82"/><line x1="440" y1="56" x2="770" y2="82"/><line x1="440" y1="56" x2="110" y2="254"/><line x1="440" y1="56" x2="330" y2="254"/><line x1="440" y1="56" x2="550" y2="254"/><line x1="440" y1="56" x2="770" y2="254"/></g>
+          <!-- 第 1 行 -->
+          <g font-size="10.5">
+            <rect x="13" y="82" width="194" height="150" class="box" stroke="#2f6fed" rx="9" fill="#2f6fed" opacity=".06"/>
+            <text x="110" y="102" text-anchor="middle" class="lbl bold" fill="#2f6fed" font-size="12">1. 模板与指令</text>
+            <text x="110" y="120" text-anchor="middle" fill="#444">插值 {{}} / v-bind</text>
+            <text x="110" y="136" text-anchor="middle" fill="#444">v-if / v-show 取舍</text>
+            <text x="110" y="152" text-anchor="middle" fill="#444">v-for + key 唯一 id</text>
+            <text x="110" y="168" text-anchor="middle" fill="#444">v-for 与 v-if 优先级</text>
+            <text x="110" y="184" text-anchor="middle" fill="#444">v-model 双向绑定</text>
+            <text x="110" y="200" text-anchor="middle" fill="#444">修饰符 .once/.prevent</text>
+
+            <rect x="233" y="82" width="194" height="150" class="box" stroke="#7c3aed" rx="9" fill="#7c3aed" opacity=".06"/>
+            <text x="330" y="102" text-anchor="middle" class="lbl bold" fill="#7c3aed" font-size="12">2. 响应式系统</text>
+            <text x="330" y="120" text-anchor="middle" fill="#444">defineProperty vs Proxy</text>
+            <text x="330" y="136" text-anchor="middle" fill="#444">$set / 数组 7 方法重写</text>
+            <text x="330" y="152" text-anchor="middle" fill="#444">懒代理 / 依赖收集</text>
+            <text x="330" y="168" text-anchor="middle" fill="#444">派发更新 / 异步批量</text>
+            <text x="330" y="184" text-anchor="middle" fill="#444">$nextTick 原理</text>
+            <text x="330" y="200" text-anchor="middle" fill="#444">ref / reactive 选择</text>
+
+            <rect x="453" y="82" width="194" height="150" class="box" stroke="#059669" rx="9" fill="#059669" opacity=".06"/>
+            <text x="550" y="102" text-anchor="middle" class="lbl bold" fill="#059669" font-size="12">3. 组件机制</text>
+            <text x="550" y="120" text-anchor="middle" fill="#444">props / emit</text>
+            <text x="550" y="136" text-anchor="middle" fill="#444">插槽 默认/具名/作用域</text>
+            <text x="550" y="152" text-anchor="middle" fill="#444">provide / inject 跨层</text>
+            <text x="550" y="168" text-anchor="middle" fill="#444">$refs 实例通信</text>
+            <text x="550" y="184" text-anchor="middle" fill="#444">组件 v-model</text>
+            <text x="550" y="200" text-anchor="middle" fill="#444">通信 8 法归类</text>
+
+            <rect x="673" y="82" width="194" height="150" class="box" stroke="#d97706" rx="9" fill="#d97706" opacity=".06"/>
+            <text x="770" y="102" text-anchor="middle" class="lbl bold" fill="#d97706" font-size="12">4. 生命周期</text>
+            <text x="770" y="120" text-anchor="middle" fill="#444">V2: created→mounted…</text>
+            <text x="770" y="136" text-anchor="middle" fill="#444">V3: setup + onXxx</text>
+            <text x="770" y="152" text-anchor="middle" fill="#444">钩子改名对照</text>
+            <text x="770" y="168" text-anchor="middle" fill="#444">keep-alive 激活/失活</text>
+            <text x="770" y="184" text-anchor="middle" fill="#444">错误捕获 errorCaptured</text>
+            <text x="770" y="200" text-anchor="middle" fill="#444">卸载清理定时器</text>
+          </g>
+          <!-- 第 2 行 -->
+          <g font-size="10.5">
+            <rect x="13" y="252" width="194" height="170" class="box" stroke="#dc2626" rx="9" fill="#dc2626" opacity=".06"/>
+            <text x="110" y="272" text-anchor="middle" class="lbl bold" fill="#dc2626" font-size="12">5. 虚拟 DOM 与 Diff</text>
+            <text x="110" y="292" text-anchor="middle" fill="#444">VNode = DOM 的 JS 描述</text>
+            <text x="110" y="308" text-anchor="middle" fill="#444">同层比较 + key</text>
+            <text x="110" y="324" text-anchor="middle" fill="#444">V2 双端 diff（四指针）</text>
+            <text x="110" y="340" text-anchor="middle" fill="#444">V3 快速 diff + LIS</text>
+            <text x="110" y="356" text-anchor="middle" fill="#444">patchFlag 动态标记</text>
+            <text x="110" y="372" text-anchor="middle" fill="#444">静态提升/事件缓存</text>
+            <text x="110" y="388" text-anchor="middle" fill="#444">为什么需要 VDOM</text>
+
+            <rect x="233" y="252" width="194" height="170" class="box" stroke="#0d9488" rx="9" fill="#0d9488" opacity=".06"/>
+            <text x="330" y="272" text-anchor="middle" class="lbl bold" fill="#0d9488" font-size="12">6. 组合式复用</text>
+            <text x="330" y="292" text-anchor="middle" fill="#444">Options vs Composition</text>
+            <text x="330" y="308" text-anchor="middle" fill="#444">script setup 语法糖</text>
+            <text x="330" y="324" text-anchor="middle" fill="#444">composables useXxx</text>
+            <text x="330" y="340" text-anchor="middle" fill="#444">mixin 及其缺点</text>
+            <text x="330" y="356" text-anchor="middle" fill="#444">自定义指令</text>
+            <text x="330" y="372" text-anchor="middle" fill="#444">插件 app.use</text>
+            <text x="330" y="388" text-anchor="middle" fill="#444">逻辑复用最佳实践</text>
+
+            <rect x="453" y="252" width="194" height="170" class="box" stroke="#4f46e5" rx="9" fill="#4f46e5" opacity=".06"/>
+            <text x="550" y="272" text-anchor="middle" class="lbl bold" fill="#4f46e5" font-size="12">7. 工程与生态</text>
+            <text x="550" y="292" text-anchor="middle" fill="#444">vue-router 路由守卫</text>
+            <text x="550" y="308" text-anchor="middle" fill="#444">Vuex / Pinia 状态</text>
+            <text x="550" y="324" text-anchor="middle" fill="#444">Vite / TS 支持</text>
+            <text x="550" y="340" text-anchor="middle" fill="#444">SFC 单文件组件</text>
+            <text x="550" y="356" text-anchor="middle" fill="#444">异步组件 / 懒加载</text>
+            <text x="550" y="372" text-anchor="middle" fill="#444">SSR / Nuxt</text>
+            <text x="550" y="388" text-anchor="middle" fill="#444">defineAsyncComponent</text>
+
+            <rect x="673" y="252" width="194" height="170" class="box" stroke="#db2777" rx="9" fill="#db2777" opacity=".06"/>
+            <text x="770" y="272" text-anchor="middle" class="lbl bold" fill="#db2777" font-size="12">8. 性能与最佳实践</text>
+            <text x="770" y="292" text-anchor="middle" fill="#444">key / 列表性能</text>
+            <text x="770" y="308" text-anchor="middle" fill="#444">大列表虚拟滚动</text>
+            <text x="770" y="324" text-anchor="middle" fill="#444">v-show vs v-if 场景</text>
+            <text x="770" y="340" text-anchor="middle" fill="#444">防抖节流/卸载清理</text>
+            <text x="770" y="356" text-anchor="middle" fill="#444">tree-shaking 包体积</text>
+            <text x="770" y="372" text-anchor="middle" fill="#444">按需引入 / 缓存</text>
+            <text x="770" y="388" text-anchor="middle" fill="#444">内存泄漏排查</text>
+          </g>
+          <text x="440" y="458" text-anchor="middle" class="lbl bold" fill="#b45309" font-size="12">八大知识块同时覆盖 Vue2 与 Vue3 的考点 —— 面试按"块"展开讲，显结构化</text>
+        </svg>
+        <div class="cap">图 3：归纳图 —— 不管问 Vue2 还是 Vue3，都能归到这 8 大块里，先答"这是哪块的题"再展开</div>
+      </div>
+
+      <div class="card">
+        <h3>④ V2 → V3 迁移改造速查清单</h3>
+        <div class="table-wrap"><table>
+          <tr><th>碰到这个写法</th><th>改成</th><th>理由</th></tr>
+          <tr><td><span class="inline-code">{{ val | format }}</span></td><td><span class="inline-code">computed / 方法</span></td><td>filters 移除</td></tr>
+          <tr><td><span class="inline-code">this.$on('x', fn)</span></td><td>mitt / Pinia</td><td>事件总线移除</td></tr>
+          <tr><td><span class="inline-code">Vue.prototype.$http</span></td><td><span class="inline-code">app.config.globalProperties.$http</span></td><td>全局 API 应用级化</td></tr>
+          <tr><td><span class="inline-code">&lt;Child :title.sync="t" /&gt;</span></td><td><span class="inline-code">&lt;Child v-model:title="t" /&gt;</span></td><td>.sync 移除</td></tr>
+          <tr><td><span class="inline-code">beforeDestroy()</span></td><td><span class="inline-code">onBeforeUnmount</span></td><td>钩子改名</td></tr>
+          <tr><td><span class="inline-code">component: () =&gt; import('X')</span></td><td><span class="inline-code">defineAsyncComponent</span></td><td>异步组件新写法</td></tr>
+          <tr><td><span class="inline-code">this.$listeners</span></td><td><span class="inline-code">$attrs</span></td><td>listeners 并入 attrs</td></tr>
+          <tr><td><span class="inline-code">this.$children</span></td><td>provide/inject 或 ref</td><td>已移除</td></tr>
+        </table></div>
+        <div class="tip t-info"><strong>好消息：</strong>Options API 在 Vue3 中仍完全兼容，模板语法（v-if/v-for/v-model 基础用法）、props/emit、插槽、路由、keep-alive 等核心概念 <strong>零成本迁移</strong>。别把迁移想得太吓人。</div>
+      </div>
+    </section>
+
+    <!-- ================= H、自测 ================= -->
+    <section id="sH">
+      <div class="section-head"><span class="num">H</span><h2>面试自测清单</h2></div>
+      <p class="section-desc">面试前一天对着这 12 题自问，答不出的回上方对应题号复习。</p>
+      <div class="card">
+        <ol class="clean quiz">
+          <li>Vue2 响应式原理 + 三大局限？（→ Q1 / B-①）</li>
+          <li>Vue3 为什么用 Proxy？和 defineProperty 区别？（→ Q2 / G-①）</li>
+          <li>ref 和 reactive 区别？reactive 解构为什么丢响应性？（→ Q3 / Q20）</li>
+          <li>Vue3 为什么比 Vue2 快？（→ Q4 / C-⑥）</li>
+          <li>V2 / V3 的 diff 区别？（→ Q5）</li>
+          <li>watch 与 watchEffect、computed 与 watch 区别？（→ Q6 / Q7）</li>
+          <li>Vue3 的 v-model 变化？（→ Q8）</li>
+          <li>组件通信有哪些？（→ Q9 / B-③）</li>
+          <li>$nextTick 原理？（→ Q11）</li>
+          <li>key 的作用？为什么不用 index？（→ Q12）</li>
+          <li>Vue2 → Vue3 迁移注意什么？（→ Q14 / G-④）</li>
+          <li>手写 defineReactive 和 reactive(Proxy)？（→ Q22 / Q23）</li>
+        </ol>
+        <div class="tip t-ok"><strong>加分技巧：</strong>面试别只背定义。每答一个点，主动补一句"实际项目中遇到过"——比如"之前用 Vue2 动态加属性不生效，用 $set 解决的"、"v-for 和 v-if 同时用导致重复渲染，改成计算属性过滤"。有场景立刻和背诵党拉开差距。</div>
+      </div>
+    </section>
+
+    <footer>
+      Vue2 与 Vue3 面试八股速记 · 韦恩图建框架，对比表记差异，问答练口述 · 祝上岸
+    </footer>
+  </main>
+</div>
+
+<script>
+  // 侧边栏滚动高亮
+  const links = document.querySelectorAll('nav.sidebar a');
+  const sections = [...document.querySelectorAll('main section')].map(s => document.getElementById(s.id));
+  window.addEventListener('scroll', () => {
+    let current = sections[0];
+    for (const sec of sections) { if (sec.getBoundingClientRect().top <= 120) current = sec; }
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + current.id));
+  });
+  links.forEach(l => l.addEventListener('click', () => document.querySelector('nav.sidebar').classList.remove('open')));
+  // 手写题代码高亮（.code.js 内自动着色）
+  document.querySelectorAll('pre.code.js').forEach(block => {
+    const code = block.textContent;
+    const tokenRe = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`|\b(?:const|let|var|function|return|if|else|new|this|import|export|from|default|async|await|class|extends|typeof|instanceof|in|of|for|while|do|switch|case|break|continue|try|catch|finally|throw|delete|void|null|true|false)\b|\b\d+(?:\.\d+)?\b)/g;
+    block.innerHTML = code.replace(tokenRe, m => {
+      if (m.startsWith('//') || m.startsWith('/*')) return '<span class="cm">' + m + '</span>';
+      if (m[0] === "'" || m[0] === '"' || m[0] === '`') return '<span class="st">' + m + '</span>';
+      if (/^\d/.test(m)) return '<span class="num">' + m + '</span>';
+      return '<span class="kw">' + m + '</span>';
+    });
+  });
+</script>
+</body>
+</html>

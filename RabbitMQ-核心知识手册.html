@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RabbitMQ 核心知识手册 · 从 Redis 到 MQ</title>
+<style>
+  /* ============ Design tokens（dataviz 参考调色板） ============ */
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --bg: #fcfcfb;
+    --card: #ffffff;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --series-1: #2a78d6;   /* blue   —— RabbitMQ / Direct */
+    --series-2: #eb6834;   /* orange —— Redis   / Fanout */
+    --series-3: #1baf7a;   /* aqua   —— Kafka   / Topic  */
+    --series-4: #eda100;   /* yellow —— RocketMQ / Work   */
+    --series-5: #e87ba4;   /* magenta */
+    --series-6: #008300;   /* green  */
+    --series-7: #4a3aa7;   /* violet */
+    --series-8: #e34948;   /* red    */
+    --good: #0ca30c;
+    --warning: #fab219;
+    --serious: #ec835a;
+    --critical: #d03b3b;
+    --code-bg: #f4f3ee;
+    --code-ink: #3a3a37;
+    --shadow: 0 1px 2px rgba(11,11,11,0.05), 0 4px 16px rgba(11,11,11,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --bg: #1a1a19;
+      --card: #232322;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255,255,255,0.10);
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --series-3: #199e70;
+      --series-4: #c98500;
+      --series-5: #d55181;
+      --series-6: #008300;
+      --series-7: #9085e9;
+      --series-8: #e66767;
+      --code-bg: #101010;
+      --code-ink: #e8e8e4;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --bg: #1a1a19;
+    --card: #232322;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+    --code-bg: #101010;
+    --code-ink: #e8e8e4;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: var(--page);
+    color: var(--ink);
+    line-height: 1.7;
+    font-size: 16px;
+  }
+
+  /* ============ 布局 ============ */
+  header.topbar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 24px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  header.topbar h1 {
+    font-size: 18px; margin: 0; font-weight: 700; letter-spacing: .3px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  header.topbar .logo {
+    width: 30px; height: 30px; border-radius: 8px; flex: none;
+    background: linear-gradient(135deg, var(--series-2), var(--series-1));
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 13px;
+  }
+  .theme-btn {
+    font: inherit; font-size: 13px; cursor: pointer;
+    border: 1px solid var(--baseline); border-radius: 8px;
+    background: var(--card); color: var(--ink);
+    padding: 6px 12px;
+  }
+  .theme-btn:hover { border-color: var(--ink-2); }
+
+  .layout { display: flex; max-width: 1240px; margin: 0 auto; }
+  nav.toc {
+    width: 230px; flex: none; padding: 24px 12px 40px;
+    position: sticky; top: 56px; height: calc(100vh - 56px);
+    overflow-y: auto;
+    font-size: 13.5px;
+  }
+  nav.toc .toc-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); font-weight: 700; margin: 0 0 10px 8px;
+  }
+  nav.toc a {
+    display: block; padding: 6px 8px; color: var(--ink-2);
+    text-decoration: none; border-radius: 6px; border-left: 2px solid transparent;
+  }
+  nav.toc a:hover { color: var(--ink); background: var(--card); }
+  nav.toc a.active { color: var(--series-1); border-left-color: var(--series-1); background: var(--card); }
+  nav.toc .lv2 { padding-left: 22px; font-size: 12.5px; }
+
+  main {
+    flex: 1; min-width: 0; padding: 24px 28px 80px;
+    max-width: 860px;
+  }
+
+  /* ============ 章节 ============ */
+  section { margin-bottom: 56px; scroll-margin-top: 70px; }
+  h2.sec {
+    font-size: 26px; margin: 0 0 6px; padding-bottom: 10px;
+    border-bottom: 2px solid var(--grid);
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.sec .num {
+    font-size: 14px; font-weight: 800; color: #fff;
+    background: var(--series-1); border-radius: 8px;
+    padding: 3px 9px; flex: none;
+  }
+  .sec-desc { color: var(--ink-2); margin: 0 0 20px; font-size: 14.5px; }
+  h3 { font-size: 19px; margin: 30px 0 10px; color: var(--ink); }
+  h4 { font-size: 16px; margin: 20px 0 8px; }
+  p { margin: 8px 0; }
+  ul, ol { margin: 8px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  strong { font-weight: 700; }
+  .tag {
+    display: inline-block; font-size: 12px; font-weight: 700;
+    border-radius: 5px; padding: 1px 7px; margin-right: 4px;
+    vertical-align: 1px;
+  }
+  .tag.hot { background: color-mix(in srgb, var(--critical) 14%, transparent); color: var(--critical); }
+  .tag.key { background: color-mix(in srgb, var(--good) 16%, transparent); color: var(--good); }
+  .tag.warn { background: color-mix(in srgb, var(--warning) 20%, transparent); color: color-mix(in srgb, var(--warning) 75%, var(--ink)); }
+
+  /* ============ 卡片 ============ */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin: 16px 0; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 16px 14px; box-shadow: var(--shadow);
+  }
+  .card h4 { margin: 0 0 6px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .card .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; display: inline-block; }
+  .card p { margin: 4px 0; font-size: 14px; color: var(--ink-2); }
+  .card .big { font-size: 26px; font-weight: 800; line-height: 1.2; color: var(--ink); }
+  .card .sub { font-size: 12.5px; color: var(--muted); }
+
+  .callout {
+    border: 1px solid var(--border); border-left: 4px solid var(--series-1);
+    background: var(--card); border-radius: 10px; padding: 14px 16px; margin: 14px 0;
+  }
+  .callout.warn { border-left-color: var(--warning); }
+  .callout.danger { border-left-color: var(--critical); }
+  .callout.good { border-left-color: var(--good); }
+  .callout .co-title { font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+
+  /* ============ 表格 ============ */
+  .tbl-wrap { overflow-x: auto; margin: 14px 0; border-radius: 10px; border: 1px solid var(--border); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; background: var(--card); }
+  th, td { text-align: left; padding: 9px 13px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  th { background: color-mix(in srgb, var(--series-1) 8%, var(--card)); font-weight: 700; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  td .pill { font-size: 12px; border-radius: 20px; padding: 1px 9px; white-space: nowrap; }
+  .pill.c1 { background: color-mix(in srgb, var(--series-1) 14%, transparent); color: var(--series-1); }
+  .pill.c2 { background: color-mix(in srgb, var(--series-2) 14%, transparent); color: var(--series-2); }
+  .pill.c3 { background: color-mix(in srgb, var(--series-3) 14%, transparent); color: var(--series-3); }
+  .pill.c4 { background: color-mix(in srgb, var(--series-4) 18%, transparent); color: var(--series-4); }
+
+  /* ============ 代码 ============ */
+  pre {
+    background: var(--code-bg); color: var(--code-ink);
+    padding: 14px 16px; border-radius: 10px; overflow-x: auto;
+    font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 13px; line-height: 1.65; border: 1px solid var(--border);
+    margin: 12px 0;
+  }
+  pre .c { color: var(--muted); }
+  pre .k { color: var(--series-1); font-weight: 600; }
+  pre .s { color: var(--series-3); }
+
+  /* ============ 折叠面试题 ============ */
+  details.qa {
+    border: 1px solid var(--border); border-radius: 12px;
+    margin: 12px 0; background: var(--card); overflow: hidden;
+  }
+  details.qa summary {
+    cursor: pointer; padding: 14px 18px; font-weight: 700; font-size: 15px;
+    list-style: none; display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid transparent;
+  }
+  details.qa summary::-webkit-details-marker { display: none; }
+  details.qa summary::before {
+    content: "▸"; color: var(--series-1); font-size: 14px; transition: transform .15s;
+  }
+  details.qa[open] summary { border-bottom-color: var(--grid); background: color-mix(in srgb, var(--series-1) 4%, var(--card)); }
+  details.qa[open] summary::before { transform: rotate(90deg); }
+  details.qa .qa-body { padding: 6px 18px 16px 44px; font-size: 14.5px; }
+  details.qa .qa-body p { margin: 8px 0; }
+  details.qa .qa-body ul { margin: 6px 0; }
+
+  /* ============ SVG 图表 ============ */
+  .fig {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 14px; padding: 10px; margin: 18px 0;
+  }
+  .fig .fig-cap {
+    font-size: 13px; color: var(--ink-2); text-align: center;
+    padding: 6px 4px 4px; border-top: 1px solid var(--grid); margin-top: 4px;
+  }
+  .fig svg { display: block; width: 100%; height: auto; }
+  .fig text { font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; }
+  .fig .t-label { fill: var(--ink); font-size: 15px; font-weight: 700; }
+  .fig .t-mid { fill: var(--ink-2); font-size: 12.5px; }
+  .fig .t-note { fill: var(--muted); font-size: 11.5px; }
+  .fig .t-head { fill: var(--ink); font-size: 14px; font-weight: 700; }
+  .fig .t-arrow { fill: var(--muted); font-size: 11px; font-style: italic; }
+  .fig line.axis, .fig .axis { stroke: var(--baseline); }
+  .fig .box { stroke: var(--baseline); stroke-width: 1.2; rx: 10; }
+  .venn-legend { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; padding: 6px 0 2px; }
+  .venn-legend span { font-size: 13px; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
+  .venn-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  /* ============ 标签 / 顶部目录移动端 ============ */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 18px 0; }
+  .kpi { text-align: center; padding: 14px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); }
+  .kpi .v { font-size: 24px; font-weight: 800; }
+  .kpi .l { font-size: 12px; color: var(--muted); }
+
+  footer { text-align: center; color: var(--muted); font-size: 13px; padding: 24px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 900px) {
+    nav.toc { display: none; }
+    main { padding: 20px 16px 60px; }
+  }
+  @media print {
+    nav.toc, header.topbar { display: none; }
+    .fig { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1><span class="logo">MQ</span> RabbitMQ 核心知识手册</h1>
+  <button class="theme-btn" id="themeBtn" type="button">🌓 切换暗色</button>
+</header>
+
+<div class="layout">
+  <nav class="toc" id="toc">
+    <p class="toc-title">目录</p>
+    <a href="#why">1. 为什么要用 MQ</a>
+    <a href="#redis-vs-mq" class="lv2">Redis vs MQ（韦恩图）</a>
+    <a href="#concepts">2. 核心概念</a>
+    <a href="#flow">3. 消息流转架构图</a>
+    <a href="#exchange">4. 交换机类型</a>
+    <a href="#exchange-venn" class="lv2">Direct / Fanout / Topic</a>
+    <a href="#models">5. 六种消息模型</a>
+    <a href="#reliability">6. 可靠性三层保障</a>
+    <a href="#dlx">7. 死信 & 延迟队列</a>
+    <a href="#cluster">8. 集群与高可用</a>
+    <a href="#mq-compare">9. 三大 MQ 对比</a>
+    <a href="#scenarios">10. 典型业务场景</a>
+    <a href="#problems">11. 四大经典问题</a>
+    <a href="#interview">12. 面试高频题库</a>
+    <a href="#cheatsheet">13. 代码与配置速查</a>
+  </nav>
+
+  <main>
+
+    <!-- ========== 概览 ========== -->
+    <div class="kpis">
+      <div class="kpi"><div class="v" style="color:var(--series-1)">AMQP</div><div class="l">核心协议</div></div>
+      <div class="kpi"><div class="v" style="color:var(--series-2)">4</div><div class="l">交换机类型</div></div>
+      <div class="kpi"><div class="v" style="color:var(--series-3)">6</div><div class="l">官方消息模型</div></div>
+      <div class="kpi"><div class="v" style="color:var(--series-4)">3</div><div class="l">可靠性保障层</div></div>
+      <div class="kpi"><div class="v" style="color:var(--series-7)">万级</div><div class="l">吞吐（QPS）</div></div>
+    </div>
+
+    <section id="why">
+      <h2 class="sec"><span class="num">1</span> 为什么要用消息队列（MQ）</h2>
+      <p class="sec-desc">先搞清楚「为什么」，再学「是什么」。MQ 的三大核心价值 + 引入它的代价。</p>
+
+      <div class="cards">
+        <div class="card">
+          <h4><span class="dot" style="background:var(--series-1)"></span>① 异步</h4>
+          <p class="big">响应更快</p>
+          <p>下单后不用同步等短信/积分/日志，直接返回「成功」，耗时从 <strong>1s → 50ms</strong>。</p>
+        </div>
+        <div class="card">
+          <h4><span class="dot" style="background:var(--series-2)"></span>② 解耦</h4>
+          <p class="big">互不影响</p>
+          <p>订单系统发一条消息，短信/库存/积分各自订阅。新增一个下游，上游代码<strong>零改动</strong>。</p>
+        </div>
+        <div class="card">
+          <h4><span class="dot" style="background:var(--series-3)"></span>③ 削峰</h4>
+          <p class="big">保护下游</p>
+          <p>秒杀瞬间 1 万请求全打进 MQ 排队，数据库按自己的能力慢慢消费，不会被打挂。</p>
+        </div>
+      </div>
+
+      <div class="callout danger">
+        <div class="co-title">⚠️ 引入 MQ 的代价（面试常被追问）</div>
+        系统复杂度上升（多一个组件要运维）、<strong>消息丢失</strong>、<strong>消息重复</strong>、<strong>消息乱序</strong>、<strong>数据一致性</strong>（从强一致退化为最终一致）。这也是本手册第 6、11 章重点解决的问题。
+      </div>
+
+      <h4>你刚学完 Redis，MQ 和「Redis 当消息队列」怎么选？</h4>
+      <p>Redis 的 <code>List / Stream / Pub-Sub</code> 能做轻量 MQ，但<strong>不保证可靠投递</strong>（Pub/Sub 丢消息、List 无 ACK 机制）。Redis 适合：内部小规模、允许丢消息、要极高性能。RabbitMQ 适合：<strong>对可靠性和路由有要求</strong>的正式业务。具体交集请看下面的韦恩图。</p>
+    </section>
+
+    <!-- ========== Redis vs RabbitMQ 韦恩图 ========== -->
+    <section id="redis-vs-mq">
+      <h2 class="sec"><span class="num">1.1</span> Redis vs RabbitMQ 韦恩图</h2>
+      <p class="sec-desc">你刚学完 Redis，用韦恩图记住两者的关系：有交集，但定位不同。</p>
+
+      <div class="fig">
+        <svg viewBox="0 0 820 560" role="img" aria-label="Redis 与 RabbitMQ 对比韦恩图">
+          <!-- 圆 -->
+          <circle cx="310" cy="280" r="215" fill="var(--series-2)" opacity=".22" stroke="var(--series-2)" stroke-width="2"/>
+          <circle cx="510" cy="280" r="215" fill="var(--series-1)" opacity=".22" stroke="var(--series-1)" stroke-width="2"/>
+          <!-- 标题 -->
+          <text x="200" y="66" class="t-head" text-anchor="middle" fill="var(--series-2)">Redis 独有</text>
+          <text x="620" y="66" class="t-head" text-anchor="middle" fill="var(--series-1)">RabbitMQ 独有</text>
+          <text x="410" y="66" class="t-head" text-anchor="middle">交集（都能做）</text>
+          <!-- Redis 独有 -->
+          <text x="198" y="110" class="t-mid" text-anchor="middle">内存 KV 数据库</text>
+          <text x="198" y="132" class="t-mid" text-anchor="middle">String/List/Hash/ZSet…</text>
+          <text x="198" y="154" class="t-mid" text-anchor="middle">单线程 IO 多路复用</text>
+          <text x="198" y="176" class="t-mid" text-anchor="middle">AOF/RDB 持久化</text>
+          <text x="198" y="198" class="t-mid" text-anchor="middle">主从+哨兵+Cluster</text>
+          <text x="198" y="220" class="t-mid" text-anchor="middle">缓存 / 分布式锁</text>
+          <text x="198" y="242" class="t-mid" text-anchor="middle">计数器 / 排行榜</text>
+          <text x="198" y="280" class="t-mid" text-anchor="middle" font-weight="700">10万+ QPS</text>
+          <text x="198" y="302" class="t-note" text-anchor="middle">性能天花板更高</text>
+          <!-- RabbitMQ 独有 -->
+          <text x="622" y="110" class="t-mid" text-anchor="middle">AMQP 跨语言协议</text>
+          <text x="622" y="132" class="t-mid" text-anchor="middle">Exchange 灵活路由</text>
+          <text x="622" y="154" class="t-mid" text-anchor="middle">Confirm / ACK 确认</text>
+          <text x="622" y="176" class="t-mid" text-anchor="middle">消息落盘持久化</text>
+          <text x="622" y="198" class="t-mid" text-anchor="middle">死信 / 延迟队列</text>
+          <text x="622" y="220" class="t-mid" text-anchor="middle">镜像 / 仲裁队列</text>
+          <text x="622" y="242" class="t-mid" text-anchor="middle">Web 管理界面</text>
+          <text x="622" y="280" class="t-mid" text-anchor="middle" font-weight="700">万级 QPS</text>
+          <text x="622" y="302" class="t-note" text-anchor="middle">可靠 & 功能完善</text>
+          <!-- 交集 -->
+          <text x="410" y="230" class="t-mid" text-anchor="middle" font-weight="700">发布 / 订阅</text>
+          <text x="410" y="253" class="t-mid" text-anchor="middle">简单消息队列</text>
+          <text x="410" y="276" class="t-mid" text-anchor="middle">延迟队列</text>
+          <text x="410" y="299" class="t-mid" text-anchor="middle">削峰 & 解耦</text>
+          <text x="410" y="322" class="t-mid" text-anchor="middle">限流</text>
+          <text x="410" y="360" class="t-note" text-anchor="middle">但 Redis 不保证可靠性，</text>
+          <text x="410" y="378" class="t-note" text-anchor="middle">适合轻量内部场景</text>
+        </svg>
+        <div class="fig-cap">图 1 · Redis（左）与 RabbitMQ（右）的定位：交集=都能做消息，差异=可靠性与路由能力</div>
+      </div>
+
+      <div class="callout key">
+        <div class="co-title">✅ 一句话记忆</div>
+        <p><strong>Redis 是「带队列功能的数据库」，RabbitMQ 是「带数据库功能的队列」。</strong>要性能选 Redis，要可靠性、路由、确认机制选 RabbitMQ。</p>
+      </div>
+    </section>
+
+    <!-- ========== 核心概念 ========== -->
+    <section id="concepts">
+      <h2 class="sec"><span class="num">2</span> 核心概念：先记 8 个名词</h2>
+      <p class="sec-desc">RabbitMQ 里几乎所有概念都能在「生产 → 中转 → 消费」链路里找到位置。</p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>名词</th><th>一句话解释</th><th>类比（现实）</th><th>易错点</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Producer</strong></td><td>生产者，发消息的一方</td><td>寄件人</td><td>—</td></tr>
+            <tr><td><strong>Consumer</strong></td><td>消费者，收消息的一方</td><td>收件人</td><td>—</td></tr>
+            <tr><td><strong>Broker</strong></td><td>RabbitMQ 服务器本身</td><td>快递中转站</td><td>—</td></tr>
+            <tr><td><strong>Exchange</strong></td><td>交换机，消息的路由中转</td><td>分拣中心</td><td class="pill c1">消息不能直发 Queue，必须过 Exchange</td></tr>
+            <tr><td><strong>Queue</strong></td><td>队列，消息真正存储的地方</td><td>收件箱</td><td class="pill c2">持久化队列 ≠ 消息持久化</td></tr>
+            <tr><td><strong>Binding</strong></td><td>Exchange 与 Queue 的绑定关系</td><td>投递路线</td><td class="pill c3">路由靠 binding 里的 routing key</td></tr>
+            <tr><td><strong>VHost</strong></td><td>虚拟主机，逻辑隔离/权限隔离</td><td>快递分区</td><td class="pill c4">不同业务用不同 vhost 隔离</td></tr>
+            <tr><td><strong>Connection / Channel</strong></td><td>TCP 连接 / 连接内的逻辑信道</td><td>公路 / 车道</td><td>Channel 复用 TCP，<strong>不要每条消息建连接</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <div class="co-title">💡 关键细节：Connection vs Channel</div>
+        <p>一个 TCP <code>Connection</code> 上可以建立多个 <code>Channel</code>（信道），多个线程各用一个 Channel，共同复用同一条 TCP。理由：创建/销毁 TCP 开销大。Spring AMQP 默认已帮你做了连接池。</p>
+      </div>
+
+      <div class="callout warn">
+        <div class="co-title">💡 关键细节：默认交换机</div>
+        <p>Exchange 名称为<strong>空字符串</strong>的默认交换机是 <strong>direct 类型</strong>，它把消息路由到 <code>routing key = 队列名</code> 的队列。所以「直接发到队列」其实仍是经过交换机，只是用了默认交换机。</p>
+      </div>
+    </section>
+
+    <!-- ========== 架构图 ========== -->
+    <section id="flow">
+      <h2 class="sec"><span class="num">3</span> 消息流转架构图</h2>
+      <p class="sec-desc">一条消息从发出到被消费，完整走一遍这条链路。</p>
+
+      <div class="fig">
+        <svg viewBox="0 0 1000 400" role="img" aria-label="RabbitMQ 消息流转架构图">
+          <!-- VHost 底框 -->
+          <rect x="250" y="18" width="560" height="250" fill="var(--series-7)" opacity=".07" rx="14" stroke="var(--series-7)" stroke-dasharray="5 4" stroke-width="1.2"/>
+          <text x="530" y="42" class="t-note" text-anchor="middle">Virtual Host（逻辑隔离区）</text>
+
+          <!-- Producer -->
+          <rect class="box" x="30" y="120" width="180" height="86" fill="color-mix(in srgb, var(--series-2) 16%, var(--card))"/>
+          <text x="120" y="157" class="t-label" text-anchor="middle">Producer</text>
+          <text x="120" y="180" class="t-mid" text-anchor="middle">生产者</text>
+
+          <!-- Exchange -->
+          <rect class="box" x="300" y="95" width="200" height="120" fill="color-mix(in srgb, var(--series-1) 16%, var(--card))"/>
+          <text x="400" y="135" class="t-label" text-anchor="middle">Exchange 交换机</text>
+          <text x="400" y="160" class="t-mid" text-anchor="middle">direct / fanout</text>
+          <text x="400" y="180" class="t-mid" text-anchor="middle">topic / headers</text>
+
+          <!-- Queue -->
+          <rect class="box" x="590" y="95" width="200" height="120" fill="color-mix(in srgb, var(--series-3) 16%, var(--card))"/>
+          <text x="690" y="135" class="t-label" text-anchor="middle">Queue 队列</text>
+          <text x="690" y="160" class="t-mid" text-anchor="middle">消息真实存储</text>
+          <text x="690" y="180" class="t-mid" text-anchor="middle">可持久化</text>
+
+          <!-- Consumer -->
+          <rect class="box" x="840" y="120" width="140" height="86" fill="color-mix(in srgb, var(--series-5) 16%, var(--card))"/>
+          <text x="910" y="157" class="t-label" text-anchor="middle">Consumer</text>
+          <text x="910" y="180" class="t-mid" text-anchor="middle">消费者</text>
+
+          <!-- 箭头 -->
+          <defs>
+            <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+              <polygon points="0 0, 9 4.5, 0 9" fill="var(--baseline)"/>
+            </marker>
+          </defs>
+          <line x1="210" y1="163" x2="295" y2="155" class="axis" stroke-width="2" marker-end="url(#ah)"/>
+          <text x="252" y="142" class="t-arrow" text-anchor="middle">Channel + RoutingKey</text>
+          <line x1="500" y1="155" x2="585" y2="155" class="axis" stroke-width="2" marker-end="url(#ah)"/>
+          <text x="542" y="142" class="t-arrow" text-anchor="middle">Binding 绑定关系</text>
+          <line x1="790" y1="163" x2="835" y2="163" class="axis" stroke-width="2" marker-end="url(#ah)"/>
+          <text x="812" y="142" class="t-arrow" text-anchor="middle">Channel</text>
+
+          <!-- 底部注解 -->
+          <text x="530" y="300" class="t-mid" text-anchor="middle">① 生产者经 Channel 发消息到 Exchange（带 routing key）</text>
+          <text x="530" y="322" class="t-mid" text-anchor="middle">② Exchange 按「类型 + routing key」匹配 Binding，投递到对应 Queue</text>
+          <text x="530" y="344" class="t-mid" text-anchor="middle">③ Queue 暂存消息，等消费者来拉取 / 被推送</text>
+          <text x="530" y="366" class="t-mid" text-anchor="middle">④ 消费者处理成功后，Channel 回传 ACK 确认</text>
+          <text x="530" y="388" class="t-note" text-anchor="middle">⚠️ 队列必须先用 Exchange 绑定，否则发到交换机的消息会直接丢弃</text>
+        </svg>
+        <div class="fig-cap">图 2 · 完整链路：Producer → Exchange → (Binding) → Queue → Consumer</div>
+      </div>
+    </section>
+
+    <!-- ========== Exchange 类型 ========== -->
+    <section id="exchange">
+      <h2 class="sec"><span class="num">4</span> 交换机（Exchange）四种类型</h2>
+      <p class="sec-desc">RabbitMQ 的路由能力全靠 Exchange。四种类型=四种「分拣规则」。</p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>类型</th><th>路由规则</th><th>典型场景</th><th>面试权重</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Direct</strong> <span class="pill c1">精确</span></td><td><code>routing key</code> 完全匹配</td><td>点对点、按级别路由（error 队列只收 error）</td><td class="pill c1">⭐⭐⭐</td></tr>
+            <tr><td><strong>Fanout</strong> <span class="pill c2">广播</span></td><td>忽略 routing key，广播给所有绑定队列</td><td>群发通知、日志全量存档</td><td class="pill c2">⭐⭐⭐</td></tr>
+            <tr><td><strong>Topic</strong> <span class="pill c3">通配</span></td><td>通配符：<code>*</code> 匹配一个词，<code>#</code> 匹配零或多个词</td><td>按主题订阅（order.create.*）、日志分级筛选</td><td class="pill c3">⭐⭐⭐</td></tr>
+            <tr><td><strong>Headers</strong> <span class="pill c4">属性</span></td><td>按消息 header 匹配（x-match all/any）</td><td>几乎没有场景</td><td class="pill c4">⭐ 认识即可</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <div class="co-title">💡 Topic 通配符记忆</div>
+        <p><code>*</code> = 占一个位置（一个单词）；<code>#</code> = 占任意多位置。例如 <code>*.orange</code> 能匹配 <code>fast.orange</code>，<code>#.orange</code> 还能匹配 <code>a.b.orange</code>。注意 <code>*.orange</code> 不能匹配只有一个词的 <code>orange</code>。</p>
+      </div>
+    </section>
+
+    <!-- ========== Exchange 韦恩图 ========== -->
+    <section id="exchange-venn">
+      <h2 class="sec"><span class="num">4.1</span> Direct / Topic / Fanout 关系韦恩图</h2>
+      <p class="sec-desc">三种核心交换机的关系：<strong>Direct 和 Topic 都靠 routing key 路由</strong>，Fanout 完全不管 key。</p>
+
+      <div class="fig">
+        <svg viewBox="0 0 820 560" role="img" aria-label="交换机类型关系韦恩图">
+          <circle cx="330" cy="260" r="190" fill="var(--series-1)" opacity=".20" stroke="var(--series-1)" stroke-width="2"/>
+          <circle cx="490" cy="260" r="190" fill="var(--series-3)" opacity=".20" stroke="var(--series-3)" stroke-width="2"/>
+          <circle cx="410" cy="410" r="190" fill="var(--series-2)" opacity=".20" stroke="var(--series-2)" stroke-width="2"/>
+
+          <text x="205" y="240" class="t-label" text-anchor="middle" fill="var(--series-1)">Direct</text>
+          <text x="205" y="262" class="t-mid" text-anchor="middle">routing key 完全匹配</text>
+          <text x="205" y="282" class="t-note" text-anchor="middle">点对点 · 精确路由</text>
+
+          <text x="615" y="240" class="t-label" text-anchor="middle" fill="var(--series-3)">Topic</text>
+          <text x="615" y="262" class="t-mid" text-anchor="middle">通配符 * 与 #</text>
+          <text x="615" y="282" class="t-note" text-anchor="middle">灵活过滤 · 主题路由</text>
+
+          <text x="410" y="545" class="t-label" text-anchor="middle" fill="var(--series-2)">Fanout</text>
+          <text x="410" y="567" class="t-mid" text-anchor="middle">忽略 key · 全量广播</text>
+
+          <text x="410" y="195" class="t-mid" text-anchor="middle" font-weight="700">都靠 routing key</text>
+          <text x="410" y="217" class="t-note" text-anchor="middle">Topic ⊇ Direct 的灵活版</text>
+
+          <text x="302" y="382" class="t-mid" text-anchor="middle" font-weight="700">不看 key</text>
+          <text x="518" y="382" class="t-mid" text-anchor="middle" font-weight="700">不看 key</text>
+
+          <text x="410" y="305" class="t-mid" text-anchor="middle" font-weight="700">都绑定 Queue</text>
+          <text x="410" y="327" class="t-note" text-anchor="middle">绑定后才投递</text>
+        </svg>
+        <div class="fig-cap">图 3 · Direct 与 Topic 共用「routing key」机制，Fanout 独立；三者的共同点是都要绑定 Queue 才会投递</div>
+      </div>
+
+      <div class="venn-legend">
+        <span><i style="background:var(--series-1)"></i>Direct：精确定向</span>
+        <span><i style="background:var(--series-3)"></i>Topic：通配筛选</span>
+        <span><i style="background:var(--series-2)"></i>Fanout：无差别广播</span>
+      </div>
+
+      <h4>怎么选？</h4>
+      <ul>
+        <li><strong>规则确定、无需过滤</strong> → Direct（最快、最简单）</li>
+        <li><strong>需要按主题/多条件筛选</strong> → Topic（direct 能做的 topic 都能做，只是更重）</li>
+        <li><strong>要所有消费者都收到同一份消息</strong> → Fanout（发布订阅）</li>
+      </ul>
+    </section>
+
+    <!-- ========== 消息模型 ========== -->
+    <section id="models">
+      <h2 class="sec"><span class="num">5</span> 六种官方消息模型</h2>
+      <p class="sec-desc">官网把使用方式归纳为 6 种。前两种不用交换机（默认交换机），后四种都靠交换机。</p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>模型</th><th>拓扑</th><th>要点</th></tr></thead>
+          <tbody>
+            <tr><td><strong>1 简单队列</strong></td><td>1 生产者 → 1 队列 → 1 消费者</td><td>入门模型</td></tr>
+            <tr><td><strong>2 工作队列</strong> <span class="pill c4">面试重点</span></td><td>1 队列 → 多消费者（轮询 / 公平分发）</td><td><strong>prefetch + 手动 ACK</strong> 避免忙闲不均</td></tr>
+            <tr><td><strong>3 发布订阅</strong></td><td>Fanout 交换机 → 多队列 → 各自消费</td><td>每个消费者一个队列，互不抢消息</td></tr>
+            <tr><td><strong>4 路由</strong></td><td>Direct 交换机 → 按 routing key 定向</td><td>只有 key 匹配的队列收到</td></tr>
+            <tr><td><strong>5 主题</strong></td><td>Topic 交换机 → 通配符匹配</td><td>最灵活，常用于日志分级</td></tr>
+            <tr><td><strong>6 RPC</strong></td><td>请求队列 + 响应队列 + correlationId</td><td>客户端等服务端返回，靠 correlationId 关联</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <div class="co-title">💡 Work Queue 两大要点（高频追问）</div>
+        <p><strong>① 默认是轮询（round-robin）：</strong>消息平均分给每个消费者，但「能力强的消费者」不会多干——会出现一个忙死、一个闲死。</p>
+        <p><strong>② 公平分发（Fair Dispatch）：</strong>设置 <code>prefetchCount = 1</code>，消费者处理完并 ACK 后才取下一条，谁快谁多干。这就是 <strong>QoS（限流）</strong> 的雏形。</p>
+      </div>
+    </section>
+
+    <!-- ========== 可靠性 ========== -->
+    <section id="reliability">
+      <h2 class="sec"><span class="num">6</span> 可靠性三层保障（面试必考）</h2>
+      <p class="sec-desc">「如何保证消息不丢」是面试第一大题。答案就是三段式：<strong>生产端确认 → 存储端持久化 → 消费端 ACK</strong>。</p>
+
+      <div class="fig">
+        <svg viewBox="0 0 900 330" role="img" aria-label="消息可靠性三层保障图">
+          <!-- 第1层 -->
+          <rect x="20" y="20" width="860" height="78" rx="12" fill="color-mix(in srgb, var(--series-1) 9%, var(--card))" stroke="var(--series-1)" stroke-width="1.4"/>
+          <circle cx="58" cy="59" r="20" fill="var(--series-1)" opacity=".9"/>
+          <text x="58" y="64" class="t-label" text-anchor="middle" fill="#fff">1</text>
+          <text x="98" y="48" class="t-head">生产端 · 确认机制（Confirm）</text>
+          <text x="98" y="72" class="t-mid">发送时开启 publisher confirm，Broker 落盘成功才回 confirm；失败 → 回调重发 / 定时补偿</text>
+
+          <!-- 第2层 -->
+          <rect x="20" y="118" width="860" height="78" rx="12" fill="color-mix(in srgb, var(--series-3) 9%, var(--card))" stroke="var(--series-3)" stroke-width="1.4"/>
+          <circle cx="58" cy="157" r="20" fill="var(--series-3)" opacity=".9"/>
+          <text x="58" y="162" class="t-label" text-anchor="middle" fill="#fff">2</text>
+          <text x="98" y="146" class="t-head">存储端 · 持久化 + 高可用</text>
+          <text x="98" y="170" class="t-mid">Exchange 持久化 + Queue 持久化 + 消息 durable（delivery_mode=2），缺一不可；生产用镜像/仲裁队列</text>
+
+          <!-- 第3层 -->
+          <rect x="20" y="216" width="860" height="78" rx="12" fill="color-mix(in srgb, var(--series-5) 9%, var(--card))" stroke="var(--series-5)" stroke-width="1.4"/>
+          <circle cx="58" cy="255" r="20" fill="var(--series-5)" opacity=".9"/>
+          <text x="58" y="260" class="t-label" text-anchor="middle" fill="#fff">3</text>
+          <text x="98" y="244" class="t-head">消费端 · 手动 ACK</text>
+          <text x="98" y="268" class="t-mid">关闭 autoAck，业务处理成功才 basicAck；失败 basicNack/Reject，可重回队列或转死信</text>
+        </svg>
+        <div class="fig-cap">图 4 · 可靠性三层：任何一层出问题都丢消息，三层都做好才叫「不丢」</div>
+      </div>
+
+      <h4>细节与坑</h4>
+      <ul>
+        <li><strong>autoAck 是万恶之源：</strong>自动 ACK 表示「收到即确认」，消费者正在处理、还没处理完，消息就从队列删了。宕机 = 消息丢。</li>
+        <li><strong>持久化 ≠ 100% 不丢：</strong>持久化是先写缓冲区再落盘，极端断电仍可能丢。要强保证用「持久化 + 仲裁队列 + 生产 Confirm」。业务可接受再放宽。</li>
+        <li><strong>Confirm 三种模式：</strong><code>none</code>（不确认）、<code>simple</code>（每条同步等确认，慢）、<code>correlated</code>（异步批量，推荐，性能最好）。</li>
+        <li><strong>重试要谨慎：</strong>消费失败立刻重试且无上限，会把异常消息反复消费、堵死队列。要么有限次重试 + 进死信，要么用 Spring 的 <code>@Retryable</code>。</li>
+      </ul>
+
+      <div class="callout good">
+        <div class="co-title">✅ 背下来的一句话回答</div>
+        <p>「消息不丢 = <strong>生产者 Confirm + 交换机/队列/消息三持久化 + 消费者手动 ACK</strong>，消费失败有限重试进死信队列。」</p>
+      </div>
+    </section>
+
+    <!-- ========== 死信 & 延迟 ========== -->
+    <section id="dlx">
+      <h2 class="sec"><span class="num">7</span> 死信队列 DLX 与延迟队列</h2>
+      <p class="sec-desc">死信队列是「垃圾回收站」，延迟队列通常就是「TTL 过期 + 死信转发」拼出来的。</p>
+
+      <div class="cards">
+        <div class="card">
+          <h4><span class="dot" style="background:var(--critical)"></span>死信队列 DLX</h4>
+          <p class="big">垃圾回收站</p>
+          <p>消息变成死信的 3 个条件：<strong>① 被拒绝且 requeue=false</strong>、<strong>② TTL 过期</strong>、<strong>③ 队列满了</strong>。</p>
+          <p class="sub">死信 → 转发到 x-dead-letter-exchange 指定的交换机</p>
+        </div>
+        <div class="card">
+          <h4><span class="dot" style="background:var(--series-4)"></span>延迟队列</h4>
+          <p class="big">TTL + DLX</p>
+          <p>消息设置 TTL 过期时间 → 过期变死信 → 死信交换机转发到「真正要处理的队列」→ 消费。实现「N 秒后执行」。</p>
+          <p class="sub">场景：订单 30 分钟未支付自动取消</p>
+        </div>
+      </div>
+
+      <h4>死信队列配置（核心片段）</h4>
+<pre><code><span class="c">// 正常业务队列，声明其死信转发目标</span>
+Map&lt;String,Object&gt; args = <span class="k">new</span> HashMap&lt;&gt;();
+args.put(<span class="s">"x-dead-letter-exchange"</span>, <span class="s">"exchange.dlx"</span>);   <span class="c">// 死信去哪个交换机</span>
+args.put(<span class="s">"x-dead-letter-routing-key"</span>, <span class="s">"order.cancel"</span>); <span class="c">// 死信用什么路由键</span>
+<span class="k">new</span> Queue(<span class="s">"order.queue"</span>, <span class="k">true</span>, <span class="k">false</span>, <span class="k">false</span>, args);
+<span class="c">// 死信交换机 + 死信队列照常声明，消费者监听死信队列即可</span></code></pre>
+
+      <div class="callout warn">
+        <div class="co-title">⚠️ 延迟队列的经典坑（3.x 老版本）</div>
+        <p>同一个 TTL 队列里，<strong>排在队头的消息会阻塞后面所有消息的过期</strong>（只有队头过期才会继续判后面的）。解决：<strong>每条消息单独设置 TTL</strong>（per-message TTL），或按延迟档位拆多个队列。RabbitMQ 3.x 还有官方插件 <code>rabbitmq_delayed_message_exchange</code>，直接用延迟交换机更省心。</p>
+      </div>
+    </section>
+
+    <!-- ========== 集群 ========== -->
+    <section id="cluster">
+      <h2 class="sec"><span class="num">8</span> 集群与高可用</h2>
+      <p class="sec-desc">单机挂了一切都完。三种模式，从「开发环境」到「生产推荐」。</p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>模式</th><th>数据怎么存</th><th>故障恢复</th><th>适用</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>普通集群</strong> <span class="pill c1">Classic</span></td>
+              <td>多节点共享<strong>元数据</strong>（交换机、队列定义），但队列消息只存一个节点，其他节点只是指针</td>
+              <td>存消息的节点宕机 → <strong>消息丢失</strong></td>
+              <td>开发 / 测试环境</td>
+            </tr>
+            <tr>
+              <td><strong>镜像队列</strong> <span class="pill c2">Mirror</span></td>
+              <td>队列在多个节点<strong>全量镜像</strong>，主写从同步</td>
+              <td>主节点宕机 → 从节点顶上</td>
+              <td>旧生产（3.8 之前）</td>
+            </tr>
+            <tr>
+              <td><strong>仲裁队列</strong> <span class="pill c3">Quorum</span></td>
+              <td>基于 <strong>Raft</strong> 协议多副本，写多数节点成功才算成功</td>
+              <td>多数副本存活即可自动选主</td>
+              <td>✅ 新项目推荐</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout good">
+        <div class="co-title">✅ 选型建议</div>
+        <p>新项目直接 <strong>仲裁队列（Quorum Queue）</strong>：强一致、自动故障转移、不依赖外部组件。镜像队列因为性能差、有脑裂风险已逐渐被淘汰。再配合客户端负载均衡 + 多节点部署达到高可用。</p>
+      </div>
+
+      <div class="callout warn">
+        <div class="co-title">⚠️ 网络分区（脑裂）</div>
+        <p>集群节点间网络断开时会出现分区。仲裁队列通过 Raft「多数派」避免双主；镜像队列历史上有脑裂（两个主同时写）风险。生产应开启分区自动恢复策略。</p>
+      </div>
+    </section>
+
+    <!-- ========== 三大 MQ 对比 ========== -->
+    <section id="mq-compare">
+      <h2 class="sec"><span class="num">9</span> RabbitMQ / Kafka / RocketMQ 对比</h2>
+      <p class="sec-desc">面试最后一道常考题：<strong>为什么选 RabbitMQ 而不是 Kafka？</strong> 用韦恩图 + 表格讲清楚。</p>
+
+      <div class="fig">
+        <svg viewBox="0 0 820 580" role="img" aria-label="三大 MQ 对比韦恩图">
+          <circle cx="330" cy="270" r="195" fill="var(--series-1)" opacity=".20" stroke="var(--series-1)" stroke-width="2"/>
+          <circle cx="490" cy="270" r="195" fill="var(--series-3)" opacity=".20" stroke="var(--series-3)" stroke-width="2"/>
+          <circle cx="410" cy="425" r="195" fill="var(--series-4)" opacity=".20" stroke="var(--series-4)" stroke-width="2"/>
+
+          <text x="205" y="250" class="t-label" text-anchor="middle" fill="var(--series-1)">RabbitMQ</text>
+          <text x="205" y="272" class="t-mid" text-anchor="middle">万级 QPS · 功能最全</text>
+          <text x="205" y="292" class="t-mid" text-anchor="middle">AMQP · 路由灵活</text>
+          <text x="205" y="312" class="t-mid" text-anchor="middle">延迟低 · 管理界面好</text>
+          <text x="205" y="332" class="t-note" text-anchor="middle">堆积能力弱</text>
+
+          <text x="615" y="250" class="t-label" text-anchor="middle" fill="var(--series-3)">Kafka</text>
+          <text x="615" y="272" class="t-mid" text-anchor="middle">百万级 QPS · 高吞吐</text>
+          <text x="615" y="292" class="t-mid" text-anchor="middle">顺序写盘 + 零拷贝</text>
+          <text x="615" y="312" class="t-mid" text-anchor="middle">分区 + offset 可重放</text>
+          <text x="615" y="332" class="t-note" text-anchor="middle">功能简单 · 无复杂路由</text>
+
+          <text x="410" y="565" class="t-label" text-anchor="middle" fill="var(--series-4)">RocketMQ</text>
+          <text x="410" y="587" class="t-mid" text-anchor="middle">十万级 · Java 实现 · 事务/延时消息</text>
+
+          <text x="410" y="200" class="t-mid" text-anchor="middle" font-weight="700">都可做消息队列</text>
+          <text x="410" y="222" class="t-note" text-anchor="middle">削峰 · 解耦 · 异步</text>
+
+          <text x="300" y="392" class="t-mid" text-anchor="middle">都支持持久化</text>
+          <text x="520" y="392" class="t-mid" text-anchor="middle">都支持高可用集群</text>
+
+          <text x="410" y="315" class="t-mid" text-anchor="middle" font-weight="700">发布 / 订阅</text>
+          <text x="410" y="337" class="t-mid" text-anchor="middle">消费位点 / 确认机制</text>
+          <text x="410" y="359" class="t-note" text-anchor="middle">可靠投递</text>
+        </svg>
+        <div class="fig-cap">图 5 · 三者都是「消息中间件」，定位差异在吞吐量 vs 功能丰富度</div>
+      </div>
+
+      <div class="venn-legend">
+        <span><i style="background:var(--series-1)"></i>RabbitMQ：万级 · 功能全 · 可靠性强</span>
+        <span><i style="background:var(--series-3)"></i>Kafka：百万级 · 高吞吐 · 日志流</span>
+        <span><i style="background:var(--series-4)"></i>RocketMQ：十万级 · 事务消息</span>
+      </div>
+
+      <h4>怎么选（面试标准答案）</h4>
+      <ul>
+        <li><strong>业务系统之间的解耦 / 订单、通知、异步任务</strong>（对可靠性、路由要求高，吞吐万级就够）→ <strong>RabbitMQ</strong></li>
+        <li><strong>海量日志、埋点、大数据流处理、指标上报</strong>（要超高吞吐，可容忍少量重复/乱序）→ <strong>Kafka</strong></li>
+        <li><strong>要分布式事务消息、延时消息，且团队是 Java 栈</strong> → <strong>RocketMQ</strong>（很多大厂自研的选它）</li>
+      </ul>
+    </section>
+
+    <!-- ========== 业务场景 ========== -->
+    <section id="scenarios">
+      <h2 class="sec"><span class="num">10</span> 典型业务场景</h2>
+      <p class="sec-desc">把前面所有知识点放进真实业务里，看怎么串起来。</p>
+
+      <div class="cards">
+        <div class="card">
+          <h4><span class="dot" style="background:var(--series-2)"></span>异步解耦</h4>
+          <p>下单成功 → 发 MQ → 短信/积分/优惠券/日志各自消费。<strong>新增下游零改动</strong>。</p>
+        </div>
+        <div class="card">
+          <h4><span class="dot" style="background:var(--series-1)"></span>削峰填谷</h4>
+          <p>秒杀：请求先入 MQ，后台按速率消费。<strong>Redis 预扣库存 + MQ 异步落库</strong>，保护数据库。</p>
+        </div>
+        <div class="card">
+          <h4><span class="dot" style="background:var(--series-4)"></span>延迟任务</h4>
+          <p>订单 30 分钟未支付自动取消、活动定时提醒、限时优惠。用 <strong>TTL + DLX</strong>。</p>
+        </div>
+        <div class="card">
+          <h4><span class="dot" style="background:var(--series-7)"></span>分布式事务</h4>
+          <p>RabbitMQ 无内置事务消息，用 <strong>本地消息表 + MQ</strong> 实现最终一致性：本地落库 + 消息表同事务，再发 MQ，消费者幂等。</p>
+        </div>
+        <div class="card">
+          <h4><span class="dot" style="background:var(--series-3)"></span>日志收集</h4>
+          <p>多个服务日志 → Topic 交换机分级 → 归档 / 告警队列。</p>
+        </div>
+      </div>
+
+      <div class="callout key">
+        <div class="co-title">✅ 秒杀完整链路（背这个案例）</div>
+        <p>前端限流 → Redis 原子扣减库存 → 扣减成功则发 MQ → 后台消费者异步生成订单/减库存落库 → 失败进死信队列人工补偿。既保证体验（秒回），又保护数据库不被瞬间打挂。</p>
+      </div>
+    </section>
+
+    <!-- ========== 四大问题 ========== -->
+    <section id="problems">
+      <h2 class="sec"><span class="num">11</span> 四大经典问题与解决方案</h2>
+      <p class="sec-desc">面试连环问：丢消息、重复、乱序、积压——这四件事，就是引入 MQ 后真实会踩的坑。</p>
+
+      <h3>① 消息丢失怎么办</h3>
+      <p>答案就是第 6 章的三层保障，这里给一个<strong>兜底方案</strong>：</p>
+      <ul>
+        <li><strong>对账机制：</strong>定期扫描「本地消息表」，把超过 N 分钟仍未确认投递成功的消息重新发送。</li>
+        <li><strong>落库优先：</strong>业务数据先落库，发 MQ 只是「通知」，即使丢了也能靠数据重建。</li>
+      </ul>
+
+      <h3>② 消息重复消费怎么办</h3>
+      <p>网络抖动、ACK 超时重投，重复消费<strong>无法从源头避免</strong>，只能让消费逻辑<strong>幂等</strong>：</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>方案</th><th>思路</th><th>适用</th></tr></thead>
+          <tbody>
+            <tr><td>数据库唯一约束</td><td>用业务主键 / 消息 ID 建唯一索引，重复插入报错被忽略</td><td>落库型消费</td></tr>
+            <tr><td>Redis SETNX</td><td>处理前 <code>SET key NX EX 120</code> 占位，重复消息直接跳过</td><td>通用去重</td></tr>
+            <tr><td>业务状态机</td><td>如订单「已支付」状态，重复的「支付通知」直接忽略</td><td>有状态业务</td></tr>
+            <tr><td>去重表</td><td>专门一张消费记录表，唯一键 = 队列 + 消息 ID</td><td>严格幂等</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>③ 消息乱序怎么办</h3>
+      <div class="callout warn">
+        <div class="co-title">⚠️ 关键认知：多消费者抢一个队列 = 天生乱序</div>
+        <p>因为每个消费者各拉各的，处理速度不同，先发的可能后处理。要让消息有序，只有三种办法：</p>
+      </div>
+      <ul>
+        <li><strong>单队列 + 单消费者：</strong>最简单，天然有序，但吞吐受限。</li>
+        <li><strong>按业务 key 路由：</strong>把 routing key 设计成业务 ID（如订单号），让<strong>同一订单的所有消息进同一个队列</strong>，该队列单消费者处理。</li>
+        <li><strong>消费端排序：</strong>消息带序号，消费者缓存乱序消息，凑齐后按序处理（代价大，慎用）。</li>
+      </ul>
+
+      <h3>④ 消息积压怎么办</h3>
+      <div class="cards">
+        <div class="card">
+          <h4><span class="dot" style="background:var(--series-1)"></span>临时扩容</h4>
+          <p>横向多开消费者实例，提高吞吐。注意队列预取数、下游限流配合。</p>
+        </div>
+        <div class="card">
+          <h4><span class="dot" style="background:var(--series-3)"></span>转储再处理</h4>
+          <p>写一个消费者把积压消息<strong>转移到一个新临时队列</strong>，再慢慢处理；原队列马上腾空，避免堆积拖死。</p>
+        </div>
+        <div class="card">
+          <h4><span class="dot" style="background:var(--series-4)"></span>治本排查</h4>
+          <p>查消费者慢在哪：慢 SQL？死循环？依赖的下游故障？修复后自然消化。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 面试题库 ========== -->
+    <section id="interview">
+      <h2 class="sec"><span class="num">12</span> 面试高频题库（折叠答案）</h2>
+      <p class="sec-desc">先自己想答案，再点开对照。带 <span class="tag hot">必背</span> 的要能口头流畅讲出。</p>
+
+      <details class="qa">
+        <summary><span class="tag hot">必背</span>为什么用消息队列？有什么缺点？</summary>
+        <div class="qa-body">
+          <p><strong>优点：</strong>① 解耦：上下游独立变更；② 异步：缩短响应时间；③ 削峰：缓冲高并发保护下游。</p>
+          <p><strong>缺点：</strong>系统更复杂、消息可能丢失、重复、乱序、数据一致性从强一致变最终一致。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="tag hot">必背</span>如何保证消息不丢失？</summary>
+        <div class="qa-body">
+          <p>三段式：<strong>生产端 Confirm</strong>（确认落盘，失败重发）→ <strong>存储端持久化</strong>（Exchange + Queue + Message 三处 durable，生产用镜像/仲裁队列）→ <strong>消费端手动 ACK</strong>（处理成功才确认，失败有限重试进死信）。加<strong>对账补偿</strong>兜底。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="tag hot">必背</span>如何保证消息不重复消费？</summary>
+        <div class="qa-body">
+          <p>无法杜绝重复，只能<strong>幂等</strong>。方案：数据库唯一约束、Redis SETNX 去重、业务状态机判断、独立去重表。关键是有个能唯一标识一条消息的东西（消息 ID / 业务主键）。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="tag hot">必背</span>如何保证消息有序？</summary>
+        <div class="qa-body">
+          <p>多消费者并发消费天然无序。方案：① 单队列单消费者（牺牲吞吐）；② 按业务 key 设计 routing key，同一实体进同一队列；③ 消息带序号消费端重排。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="tag hot">必背</span>消息积压了怎么解决？</summary>
+        <div class="qa-body">
+          <p>排查消费慢的原因（慢 SQL / 下游故障）；临时扩容消费者；写转储任务把消息移到新队列慢慢处理；必要时上游限流/降级。积压本质是「消费能力 < 生产速度」。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="tag hot">必背</span>Exchange 有哪几种类型？区别？</summary>
+        <div class="qa-body">
+          <p>Direct（routing key 完全匹配）、Fanout（广播忽略 key）、Topic（通配符 * # 匹配）、Headers（按 header 属性，几乎不用）。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="tag hot">必背</span>什么是死信队列？延迟队列怎么实现？</summary>
+        <div class="qa-body">
+          <p>死信队列：接收「死信」消息的队列。消息变死信三个条件——被拒绝且 requeue=false、TTL 过期、队列满。延迟队列 = <strong>TTL + 死信转发</strong>：消息设过期时间，过期成死信转到目标队列再消费；或用官方延迟交换机插件。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="tag hot">必背</span>生产端怎么确认消息送达？Confirm 和事务的区别？</summary>
+        <div class="qa-body">
+          <p>开启 <strong>publisher confirm</strong>，Broker 落盘成功回确认，失败走回调重发。<strong>事务机制（txSelect）</strong>每条消息同步 commit，性能差很多，几乎不用。<strong>Confirm（correlated 模式）性能好，是推荐方案</strong>。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="tag hot">必背</span>消费端 ACK / NACK / Reject？autoAck 为什么不好？</summary>
+        <div class="qa-body">
+          <p>处理成功 <code>basicAck</code>；处理失败 <code>basicNack</code>（可 requeue 重回队列）；<code>basicReject</code> 是 Nack 的单条版。autoAck 收到即删，<strong>消费者宕机或处理异常时消息就丢了</strong>，所以生产必须手动 ACK，且<strong>业务处理完才 ACK</strong>。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>什么是 prefetch？有什么用？</summary>
+        <div class="qa-body">
+          <p>消费者单次预取的消息数量。<code>prefetch=1</code> 时消费者处理完一条再取下一条，实现公平分发，避免「一个忙死一个闲死」，也是对下游的简单限流。值太大 = 消费者本地囤积消息。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>Connection 和 Channel 的区别？</summary>
+        <div class="qa-body">
+          <p>Connection 是 TCP 长连接，Channel 是连接上的逻辑信道，一个连接可开多个 Channel，多线程共用连接并发发送，避免反复建连的开销。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>镜像队列和仲裁队列区别？生产怎么选？</summary>
+        <div class="qa-body">
+          <p>镜像队列：主从全量同步，异步，有脑裂风险。仲裁队列：Raft 多副本强一致，写多数节点成功，自动选主。新项目推荐<strong>仲裁队列</strong>。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>RabbitMQ 和 Kafka 怎么选？</summary>
+        <div class="qa-body">
+          <p>RabbitMQ：万级 QPS、功能全、路由灵活、可靠，适合业务系统间解耦异步。Kafka：百万级 QPS、顺序写盘零拷贝、日志/流处理/埋点，适合海量吞吐场景。RocketMQ 折中，支持事务消息，Java 大厂常用。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>一条消息从发送到消费的完整流程？</summary>
+        <div class="qa-body">
+          <p>Producer 建立 Connection/Channel → 发送消息到 Exchange（带 routing key）→ Exchange 按类型+key 匹配 Binding → 投递到目标 Queue → Queue 持久化暂存 → Consumer 拉取/被推送 → 处理成功后 ACK → 消息删除。中途任一步配合持久化 + 确认机制才可靠。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>mandatory 参数是干什么的？</summary>
+        <div class="qa-body">
+          <p>mandatory=true 时，消息发到交换机却<strong>没有匹配到任何队列</strong>，会把消息回退给生产者（ReturnListener 回调），避免静默丢失。它是「发送即丢弃」的保护伞。</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>如何给 RabbitMQ 做限流 / 抗压？</summary>
+        <div class="qa-body">
+          <p>消费端：<code>prefetch</code> 限制单消费者预取量；全局消费者并发上限。生产端：发送前做令牌桶限流 + 对账补偿。缓存层用 Redis 兜底。下游数据库加保护（连接池/熔断）。</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ========== 速查 ========== -->
+    <section id="cheatsheet">
+      <h2 class="sec"><span class="num">13</span> 代码与配置速查（Spring Boot）</h2>
+      <p class="sec-desc">看完理论上手就能用。最常用的三段：配置、发消息、收消息。</p>
+
+      <h4>① application.yml 关键配置</h4>
+<pre><code>spring:
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+    publisher-confirm-type: <span class="k">correlated</span>      <span class="c"># 生产端异步确认</span>
+    publisher-returns: <span class="k">true</span>              <span class="c"># mandatory 回退</span>
+    listener:
+      simple:
+        acknowledge-mode: <span class="k">manual</span>         <span class="c"># 手动 ACK（关键！）</span>
+        prefetch: 1                          <span class="c"># 公平分发</span>
+        retry:
+          enabled: <span class="k">true</span>
+          max-attempts: 3                   <span class="c"># 有限重试，别无限重试</span></code></pre>
+
+      <h4>② 生产者发送 + 确认</h4>
+<pre><code><span class="k">@RestController</span> <span class="k">class</span> OrderController {
+    <span class="k">private final</span> RabbitTemplate rabbit;
+
+    <span class="k">public void</span> createOrder(OrderDTO dto) {
+        <span class="c">// 1. 业务落库（本地消息表一并写入）</span>
+        orderService.insert(dto);
+        <span class="c">// 2. 发消息：交换机 + 路由键 + 消息体</span>
+        rabbit.convertAndSend(<span class="s">"exchange.order"</span>, <span class="s">"order.created"</span>, dto);
+        <span class="c">// 3. 异步确认结果：ConfirmCallback 里失败则补偿重发</span>
+        rabbit.setConfirmCallback((corr, ack, cause) -&gt; {
+            <span class="k">if</span> (!ack) log.warn(<span class="s">"发送失败: {}"</span>, cause);   <span class="c">// 补偿</span>
+        });
+    }
+}</code></pre>
+
+      <h4>③ 消费者手动 ACK</h4>
+<pre><code><span class="k">@Component</span> <span class="k">class</span> OrderConsumer {
+    <span class="k">@RabbitListener</span>(queues = <span class="s">"order.queue"</span>)
+    <span class="k">public void</span> handle(Order order, Channel channel, <span class="k">@Header</span>(<span class="s">AmqpHeaders.DELIVERY_TAG</span>) long tag) {
+        <span class="k">try</span> {
+            orderService.process(order);            <span class="c">// 先做业务</span>
+            channel.basicAck(tag, <span class="k">false</span>);          <span class="c">// 成功才 ACK</span>
+        } <span class="k">catch</span> (Exception e) {
+            <span class="k">if</span> (canRetry(tag)) channel.basicNack(tag, <span class="k">false</span>, <span class="k">true</span>);  <span class="c">// 重回队列重试</span>
+            <span class="k">else</span> channel.basicNack(tag, <span class="k">false</span>, <span class="k">false</span>);               <span class="c">// 进死信队列</span>
+        }
+    }
+}</code></pre>
+
+      <h4>④ 常用管理命令</h4>
+<pre><code>rabbitmqctl status                  <span class="c"># 集群/节点状态</span>
+rabbitmqctl list_queues              <span class="c"># 队列列表（可看积压数）</span>
+rabbitmqctl list_queues name messages consumers
+rabbitmq-plugins enable rabbitmq_management   <span class="c"># 开启 Web 管理界面（15672）</span>
+rabbitmqctl add_user admin admin123
+rabbitmqctl set_permissions -p / admin <span class="s">".*"</span> <span class="s">".*"</span> <span class="s">".*"</span></code></pre>
+
+      <div class="callout good">
+        <div class="co-title">✅ 三个「背下来」的排障口诀</div>
+        <p>① 丢消息 → 查 Confirm 是否开、持久化三件套、是否 autoAck。<br>② 重复消息 → 消费逻辑加幂等（唯一键/状态机）。<br>③ 积压 → 查消费者慢在哪，扩容 / 转储，最后考虑上游降级。</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>RabbitMQ 核心知识手册 · 面向已学完 Redis 的初学者 · 用 <a href="#flow" style="color:var(--series-1)">消息流转图</a> 串起全部概念，用 <a href="#problems" style="color:var(--series-3)">四大问题</a> 通过面试</footer>
+
+<script>
+  // 主题切换
+  const btn = document.getElementById('themeBtn');
+  const root = document.documentElement;
+  btn.addEventListener('click', () => {
+    const dark = root.dataset.theme === 'dark' || (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+    root.dataset.theme = dark ? 'light' : 'dark';
+    btn.textContent = dark ? '🌓 切换暗色' : '🌞 切换亮色';
+  });
+
+  // 目录高亮当前章节
+  const links = document.querySelectorAll('nav.toc a');
+  const sections = [...links].map(a => document.querySelector(a.getAttribute('href')));
+  const obs = new IntersectionObserver(entries => {
+    const visible = entries.filter(e => e.isIntersecting);
+    if (visible.length) {
+      const id = visible[visible.length - 1].target.id;
+      links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + id));
+    }
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => s && obs.observe(s));
+</script>
+
+</body>
+</html>
